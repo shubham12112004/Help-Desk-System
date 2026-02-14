@@ -1,0 +1,175 @@
+@import url("https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap");
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 220 20% 97%;
+    --foreground: 224 30% 12%;
+
+    --card: 0 0% 100%;
+    --card-foreground: 224 30% 12%;
+
+    --popover: 0 0% 100%;
+    --popover-foreground: 224 30% 12%;
+
+    --primary: 234 85% 58%;
+    --primary-foreground: 0 0% 100%;
+
+    --secondary: 220 16% 93%;
+    --secondary-foreground: 224 30% 12%;
+
+    --muted: 220 16% 93%;
+    --muted-foreground: 220 10% 46%;
+
+    --accent: 234 85% 96%;
+    --accent-foreground: 234 85% 58%;
+
+    --destructive: 0 72% 51%;
+    --destructive-foreground: 0 0% 100%;
+
+    --border: 220 16% 90%;
+    --input: 220 16% 90%;
+    --ring: 234 85% 58%;
+
+    --radius: 0.625rem;
+
+    /* Status colors */
+    --status-open: 234 85% 58%;
+    --status-open-bg: 234 85% 96%;
+    --status-in-progress: 38 92% 50%;
+    --status-in-progress-bg: 38 92% 95%;
+    --status-resolved: 152 60% 42%;
+    --status-resolved-bg: 152 60% 95%;
+    --status-closed: 220 10% 46%;
+    --status-closed-bg: 220 16% 93%;
+
+    /* Priority colors */
+    --priority-low: 152 60% 42%;
+    --priority-medium: 38 92% 50%;
+    --priority-high: 15 80% 55%;
+    --priority-urgent: 0 72% 51%;
+
+    /* Sidebar */
+    --sidebar-background: 0 0% 100%;
+    --sidebar-foreground: 224 30% 12%;
+    --sidebar-primary: 234 85% 58%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 234 85% 96%;
+    --sidebar-accent-foreground: 234 85% 58%;
+    --sidebar-border: 220 16% 90%;
+    --sidebar-ring: 234 85% 58%;
+
+    /* Gradient tokens */
+    --gradient-primary: linear-gradient(
+      135deg,
+      hsl(234 85% 58%),
+      hsl(260 80% 62%)
+    );
+    --gradient-surface: linear-gradient(
+      180deg,
+      hsl(0 0% 100%),
+      hsl(220 20% 97%)
+    );
+
+    /* Shadow tokens */
+    --shadow-sm: 0 1px 2px 0 hsl(224 30% 12% / 0.04);
+    --shadow-md: 0 4px 12px -2px hsl(224 30% 12% / 0.08);
+    --shadow-lg: 0 12px 32px -4px hsl(224 30% 12% / 0.12);
+    --shadow-card: 0 1px 3px 0 hsl(224 30% 12% / 0.04),
+      0 1px 2px -1px hsl(224 30% 12% / 0.04);
+    --shadow-card-hover: 0 4px 16px -2px hsl(234 85% 58% / 0.12);
+  }
+
+  .dark {
+    --background: 224 30% 8%;
+    --foreground: 220 20% 95%;
+
+    --card: 224 25% 12%;
+    --card-foreground: 220 20% 95%;
+
+    --popover: 224 25% 12%;
+    --popover-foreground: 220 20% 95%;
+
+    --primary: 234 85% 65%;
+    --primary-foreground: 0 0% 100%;
+
+    --secondary: 224 20% 18%;
+    --secondary-foreground: 220 20% 95%;
+
+    --muted: 224 20% 18%;
+    --muted-foreground: 220 10% 56%;
+
+    --accent: 234 40% 20%;
+    --accent-foreground: 234 85% 72%;
+
+    --destructive: 0 62.8% 30.6%;
+    --destructive-foreground: 0 0% 100%;
+
+    --border: 224 20% 18%;
+    --input: 224 20% 18%;
+    --ring: 234 85% 65%;
+
+    --sidebar-background: 224 30% 10%;
+    --sidebar-foreground: 220 20% 95%;
+    --sidebar-primary: 234 85% 65%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 234 40% 20%;
+    --sidebar-accent-foreground: 234 85% 72%;
+    --sidebar-border: 224 20% 18%;
+    --sidebar-ring: 234 85% 65%;
+  }
+
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground font-sans antialiased;
+    font-family: "Inter", system-ui, -apple-system, sans-serif;
+  }
+}
+
+@layer utilities {
+  .gradient-primary {
+    background: var(--gradient-primary);
+  }
+
+  .shadow-card {
+    box-shadow: var(--shadow-card);
+  }
+
+  .shadow-card-hover {
+    box-shadow: var(--shadow-card-hover);
+  }
+
+  .animate-slide-up {
+    animation: slideUp 0.4s ease-out;
+  }
+
+  .animate-fade-in {
+    animation: fadeIn 0.3s ease-out;
+  }
+}
+
+@keyframes slideUp {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
