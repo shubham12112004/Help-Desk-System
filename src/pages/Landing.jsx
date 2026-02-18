@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { useAuth } from "@/hooks/useAuth";
 import {
   ChevronDown,
   Hospital,
@@ -34,7 +35,26 @@ import { cn } from "@/lib/utils";
 
 const Landing = () => {
   const navigate = useNavigate();
+  const { user } = useAuth();
   const [searchQuery, setSearchQuery] = useState("");
+
+  const handleGetStarted = () => {
+    // If user is already logged in, go to dashboard
+    if (user) {
+      console.log("User already authenticated, navigating to dashboard");
+      navigate("/dashboard");
+    } else {
+      console.log("User not authenticated, navigating to sign-up/sign-in");
+      navigate("/auth");
+    }
+  };
+
+  const handleSearch = (e) => {
+    e.preventDefault();
+    if (searchQuery.trim()) {
+      navigate(`/auth?issue=${encodeURIComponent(searchQuery)}`);
+    }
+  };
 
   // Statistics
   const stats = [
@@ -166,13 +186,6 @@ const Landing = () => {
     { icon: Shield, text: "Secure & Encrypted" },
   ];
 
-  const handleSearch = (e) => {
-    e.preventDefault();
-    if (searchQuery.trim()) {
-      navigate(`/auth?issue=${encodeURIComponent(searchQuery)}`);
-    }
-  };
-
   return (
     <div className="min-h-screen bg-background">
       {/* Navigation */}
@@ -188,7 +201,8 @@ const Landing = () => {
             <div className="flex items-center gap-4">
               <ThemeToggle />
               <Button
-                onClick={() => navigate("/auth")}
+                type="button"
+                onClick={handleGetStarted}
                 variant="default"
                 size="sm"
               >
@@ -253,7 +267,8 @@ const Landing = () => {
             {/* CTA Buttons */}
             <div className="flex flex-col sm:flex-row gap-4 justify-center mb-16">
               <Button
-                onClick={() => navigate("/auth")}
+                type="button"
+                onClick={handleGetStarted}
                 size="lg"
                 className="gap-2 px-8"
               >
@@ -374,7 +389,8 @@ const Landing = () => {
             {departments.map((dept, index) => (
               <button
                 key={index}
-                onClick={() => navigate("/auth")}
+                type="button"
+                onClick={handleGetStarted}
                 className="p-6 rounded-lg border border-border/40 bg-card hover:border-primary/50 hover:bg-primary/5 transition-all hover:shadow-md group text-left"
               >
                 <div className="flex items-start justify-between mb-3">
@@ -440,7 +456,8 @@ const Landing = () => {
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
             <Button
-              onClick={() => navigate("/auth")}
+              type="button"
+              onClick={handleGetStarted}
               size="lg"
               className="gap-2"
             >

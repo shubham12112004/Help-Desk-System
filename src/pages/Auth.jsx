@@ -41,7 +41,7 @@ const Auth = () => {
       }
     }
   }, []);
-  const [showForm, setShowForm] = useState(false);
+  const [showForm, setShowForm] = useState(true); // Show auth form immediately
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [fullName, setFullName] = useState("");
@@ -66,7 +66,7 @@ const Auth = () => {
   useEffect(() => {
     if (!authLoading && user) {
       console.log("User authenticated, redirecting to dashboard:", user.email);
-      navigate("/", { replace: true });
+      navigate("/dashboard", { replace: true });
     }
   }, [authLoading, user, navigate]);
 
@@ -497,7 +497,7 @@ const Auth = () => {
           } else if (data?.session) {
             // Auto-login enabled (email confirmation disabled in Supabase)
             toast.success("Account created successfully!");
-            navigate("/");
+            navigate("/dashboard");
           } else {
             toast.success("Please check your email to verify your account.");
           }
@@ -515,7 +515,7 @@ const Auth = () => {
           }
         } else {
           toast.success("Welcome back!");
-          navigate("/");
+          navigate("/dashboard");
         }
       }
     } catch (error) {
@@ -618,7 +618,7 @@ const Auth = () => {
       } else if (data?.session) {
         toast.success("Email verified successfully! Welcome!");
         setShowOTPScreen(false);
-        navigate("/");
+        navigate("/dashboard");
       }
     } catch (error) {
       console.error("OTP verification error:", error);

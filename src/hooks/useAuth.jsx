@@ -79,11 +79,16 @@ export function AuthProvider({ children }) {
     };
   }, []);
 
+  const logout = async () => {
+    await supabase.auth.signOut();
+  };
+
   return (
     <AuthContext.Provider
       value={{
         user,
         loading,
+        logout,
       }}
     >
       {children}

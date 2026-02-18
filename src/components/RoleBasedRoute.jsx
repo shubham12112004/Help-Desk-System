@@ -26,9 +26,9 @@ export function RoleBasedRoute({
     );
   }
 
-  // Not authenticated
+  // Not authenticated - redirect to landing page
   if (!user || !profile) {
-    return <Navigate to="/auth" replace />;
+    return <Navigate to="/" replace />;
   }
 
   // Check permission-based access

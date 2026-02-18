@@ -18,8 +18,7 @@ import NotFound from "./pages/NotFound";
 import AdminDashboard from "./pages/AdminDashboard";
 import StaffRoster from "./pages/StaffRoster";
 import HospitalAnalytics from "./pages/HospitalAnalytics";
-import { useEffect, Suspense } from "react";
-import { initializeStorage } from "@/services/storage";
+import { Suspense } from "react";
 
 const queryClient = new QueryClient();
 
@@ -34,11 +33,6 @@ const LoadingFallback = () => (
 );
 
 const App = () => {
-  // Initialize storage bucket on app load
-  useEffect(() => {
-    initializeStorage().catch(console.error);
-  }, []);
-
   return (
     <ErrorBoundary>
       <QueryClientProvider client={queryClient}>

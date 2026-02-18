@@ -1,4 +1,4 @@
-import { Link, useLocation } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import {
   LayoutDashboard,
   Ticket,
@@ -12,16 +12,16 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/hooks/useAuth";
-import { supabase } from "@/integrations/supabase/client";
 
 export function AppSidebar({ isOpen = true, onClose = () => {} }) {
   const location = useLocation();
-  const { user } = useAuth();
+  const navigate = useNavigate();
+  const { user, logout } = useAuth();
   const userRole = user?.user_metadata?.role ?? "citizen";
   const isStaff = userRole === "staff" || userRole === "admin";
 
   const navItems = [
-    { to: "/", icon: LayoutDashboard, label: "Dashboard" },
+    { to: "/dashboard", icon: LayoutDashboard, label: "Dashboard" },
     { to: "/tickets", icon: Ticket, label: isStaff ? "All Tickets" : "My Tickets" },
     { to: "/create", icon: PlusCircle, label: "New Ticket" },
     ...(isStaff
@@ -41,7 +41,8 @@ export function AppSidebar({ isOpen = true, onClose = () => {} }) {
   }[userRole];
 
   const handleSignOut = async () => {
-    await supabase.auth.signOut();
+    await logout();
+    navigate("/");
   };
 
   const initials = user?.user_metadata?.full_name
@@ -82,7 +83,7 @@ export function AppSidebar({ isOpen = true, onClose = () => {} }) {
         <button
           type="button"
           onClick={onClose}
-          className="inline-flex h-8 w-8 items-center justify-center rounded-md text-muted-foreground transition hover:bg-accent hover:text-foreground lg:hidden"
+          className="inline-flex h-8 w-8 items-center justify-center rounded-md text-muted-foreground transition hover:bg-accent hover:text-foreground"
           aria-label="Close sidebar"
         >
           <X className="h-4 w-4" />

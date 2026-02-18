@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { Menu } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import { AppSidebar } from "./AppSidebar";
 import ProfessionalHeader from "./ProfessionalHeader";
 import Footer from "./Footer";
@@ -22,8 +23,23 @@ export function AppLayout({ children, notifications = [] }) {
       {/* Professional Header */}
       <ProfessionalHeader onSearch={handleSearch} notifications={notifications} />
       
+      {/* Floating Menu Button - shows when sidebar is closed */}
+      {!isSidebarOpen && (
+        <Button
+          onClick={() => setIsSidebarOpen(true)}
+          size="icon"
+          variant="default"
+          className="fixed left-4 top-20 z-50 h-12 w-12 rounded-full shadow-lg hover:scale-110 transition-transform"
+        >
+          <Menu className="h-6 w-6" />
+        </Button>
+      )}
+      
       <div className="flex flex-1">
-        <AppSidebar isOpen={isSidebarOpen} onClose={() => setIsSidebarOpen(false)} />
+        <AppSidebar 
+          isOpen={isSidebarOpen} 
+          onClose={() => setIsSidebarOpen(false)} 
+        />
         <div className="flex min-h-screen flex-1 flex-col">
           <main className={`flex-1 p-4 sm:p-6 lg:p-8 transition-all ${
             isSidebarOpen ? "lg:mr-0" : "lg:mr-0"

@@ -47,9 +47,9 @@ export function ProtectedRoute({ children }) {
     );
   }
 
-  // Redirect to auth if not authenticated
+  // Redirect to landing page if not authenticated
   if (!user || timeout) {
-    return <Navigate to="/auth" replace />;
+    return <Navigate to="/" replace />;
   }
 
   return <>{children}</>;

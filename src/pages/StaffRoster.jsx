@@ -28,7 +28,7 @@ const StaffRoster = () => {
 
   useEffect(() => {
     if (!isStaff) {
-      navigate("/");
+      navigate("/dashboard");
       return;
     }
 
@@ -90,7 +90,7 @@ const StaffRoster = () => {
       <div className="max-w-6xl mx-auto">
         {/* Back button */}
         <Button
-          onClick={() => navigate("/")}
+          onClick={() => navigate("/dashboard")}
           variant="ghost"
           size="sm"
           className="gap-2 mb-6"

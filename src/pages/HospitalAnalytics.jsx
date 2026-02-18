@@ -30,7 +30,7 @@ const HospitalAnalytics = () => {
 
   useEffect(() => {
     if (!isStaff) {
-      navigate("/");
+      navigate("/dashboard");
       return;
     }
 
@@ -136,7 +136,7 @@ const HospitalAnalytics = () => {
       <div className="max-w-7xl mx-auto">
         {/* Back button */}
         <Button
-          onClick={() => navigate("/")}
+          onClick={() => navigate("/dashboard")}
           variant="ghost"
           size="sm"
           className="gap-2 mb-6"

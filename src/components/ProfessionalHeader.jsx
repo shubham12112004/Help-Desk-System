@@ -27,7 +27,6 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ThemeToggle } from "@/components/ThemeToggle";
-import { badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import {
   Dialog,
@@ -65,7 +64,7 @@ const ProfessionalHeader = ({ onSearch, notifications = [] }) => {
 
   const handleLogout = async () => {
     await logout();
-    navigate("/auth");
+    navigate("/");
   };
 
   const handleSearch = (e) => {
