@@ -3,9 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-
     <title>HelpDesk - Support Ticket System</title>
-
     <meta
       name="description"
       content="Professional help desk system for managing support tickets and resolving customer queries efficiently."
@@ -22,6 +20,21 @@
 
     <!-- Twitter -->
     <meta name="twitter:card" content="summary" />
+    
+    <!-- Favicon -->
+    <link rel="icon" type="image/png" sizes="16x16" href="/help%20desk.png" />
+    <link rel="icon" type="image/png" sizes="32x32" href="/help%20desk.png" />
+    <link rel="icon" type="image/png" sizes="48x48" href="/help%20desk.png" />
+    <link rel="apple-touch-icon" sizes="180x180" href="/help%20desk.png" />
+    
+    <!-- Theme Script (Prevent Flash) -->
+    <script>
+      (function() {
+        const theme = localStorage.getItem('theme') || 
+          (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+        document.documentElement.classList.add(theme);
+      })();
+    </script>
   </head>
 
   <body>

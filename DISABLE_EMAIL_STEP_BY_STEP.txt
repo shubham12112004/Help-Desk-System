@@ -1,0 +1,122 @@
+╔═══════════════════════════════════════════════════════════════╗
+║                                                               ║
+║        🔧 FIX 504 ERROR - DISABLE EMAIL CONFIRMATION         ║
+║                                                               ║
+╚═══════════════════════════════════════════════════════════════╝
+
+
+STEP 1: OPEN SUPABASE AUTH SETTINGS
+════════════════════════════════════════════════════════════════
+
+Copy and paste this URL in your browser:
+
+👉 https://supabase.com/dashboard/project/yoifuexgukjsfbqsmwrn/auth/providers
+
+(Log in to Supabase if prompted)
+
+
+STEP 2: FIND THE EMAIL PROVIDER
+════════════════════════════════════════════════════════════════
+
+Look for a box/card labeled:
+┌─────────────────────┐
+│  📧 Email          │  ← Look for this
+│  [Enabled]         │
+└─────────────────────┘
+
+
+STEP 3: CLICK TO CONFIGURE
+════════════════════════════════════════════════════════════════
+
+• Click on the Email box to open settings
+• You'll see configuration options
+
+
+STEP 4: FIND "CONFIRM EMAIL" SETTING
+════════════════════════════════════════════════════════════════
+
+Scroll down and look for:
+
+   ┌──────────────────────────────────────┐
+   │  Confirm email                       │
+   │  ○ ON  (it's probably here)         │ ← Currently ON
+   │                                      │
+   │  Enable to require email             │
+   │  confirmation during signup          │
+   └──────────────────────────────────────┘
+
+
+STEP 5: TOGGLE IT OFF
+════════════════════════════════════════════════════════════════
+
+• Click the toggle to turn it OFF
+• It should look like:
+   
+   ┌──────────────────────────────────────┐
+   │  Confirm email                       │
+   │  ○                           OFF     │ ← Now OFF
+   └──────────────────────────────────────┘
+
+
+STEP 6: SAVE CHANGES
+════════════════════════════════════════════════════════════════
+
+• Scroll to the bottom
+• Click the green "Save" button
+• Wait for success message
+
+
+STEP 7: VERIFY IT WORKED
+════════════════════════════════════════════════════════════════
+
+Run this in your terminal:
+
+   node check-email-config.js
+
+You should see:
+   ✅ Email confirmation: DISABLED (good!)
+   ✅ Autoconfirm: YES (instant signup)
+
+
+STEP 8: TEST SIGNUP
+════════════════════════════════════════════════════════════════
+
+1. Go to: http://localhost:5173/auth
+2. Fill in the signup form
+3. Click "Create Account"
+4. Should work in 1-2 seconds! ⚡
+
+
+╔═══════════════════════════════════════════════════════════════╗
+║                                                               ║
+║        ✨ AFTER THIS FIX                                      ║
+║                                                               ║
+║  • Signup is INSTANT (1-2 seconds)                           ║
+║  • No email verification needed                               ║
+║  • No more 504 errors                                        ║
+║  • Users can log in immediately                               ║
+║                                                               ║
+╚═══════════════════════════════════════════════════════════════╝
+
+
+⚠️ ALTERNATE URL IF ABOVE DOESN'T WORK:
+════════════════════════════════════════════════════════════════
+
+Try this URL instead:
+https://supabase.com/dashboard/project/yoifuexgukjsfbqsmwrn/auth/providers
+
+Then navigate:
+Dashboard → Authentication → Providers → Email
+
+
+🆘 NEED MORE HELP?
+════════════════════════════════════════════════════════════════
+
+If you can't find the setting:
+1. Screenshot your Supabase auth page
+2. Or try: Settings → Auth → Email Auth Provider → Confirm email
+
+The setting might be in:
+• Auth → Providers → Email
+• Settings → Auth → Email confirmation
+• Authentication → Email Auth → Confirm email

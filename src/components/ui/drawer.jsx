@@ -1,4 +1,4 @@
-import *"react";
+import * as React from "react";
 import { Drawer"vaul";
 
 import { cn } from "@/lib/utils";
@@ -73,3 +73,4 @@ export {
   DrawerTitle,
   DrawerDescription,
 };
+

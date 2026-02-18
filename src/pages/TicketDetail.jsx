@@ -1,10 +1,15 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useParams, Link } from "react-router-dom";
 import { AppLayout } from "@/components/AppLayout";
 import { StatusBadge } from "@/components/StatusBadge";
 import { PriorityIndicator } from "@/components/PriorityIndicator";
+import { RealtimeChat } from "@/components/RealtimeChat";
+import { AssignmentDialog } from "@/components/AssignmentDialog";
 import { useTickets, useTicketDetail } from "@/hooks/useTickets";
 import { useAuth } from "@/hooks/useAuth";
+import { supabase } from "@/integrations/supabase/client";
+import { getTicketComments } from "@/services/realtime";
+import { getTicketAttachments, getSignedUrl } from "@/services/storage";
 import {
   categoryLabels,
   statusConfig,
@@ -17,24 +22,59 @@ import {
   User,
   Calendar,
   Tag,
-  Send,
   UserCircle,
   Hospital,
   Building2,
   FileText,
+  Image,
+  Download,
+  UserPlus,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
 
 const TicketDetail = () => {
   const { id } = useParams();
-  const { updateTicketStatus, addMessage } = useTickets();
-  const { isAdmin } = useAuth();
+  const { updateTicketStatus } = useTickets();
+  const { user } = useAuth();
+  const [comments, setComments] = useState([]);
+  const [attachments, setAttachments] = useState([]);
+  const [loadingComments, setLoadingComments] = useState(true);
+  const [showAssignDialog, setShowAssignDialog] = useState(false);
 
-  const { data: ticket, isLoading } = useTicketDetail(id || "");
-  const [reply, setReply] = useState("");
+  const userRole = user?.user_metadata?.role ?? "citizen";
+  const isAgent = userRole === "admin" || userRole === "staff" || userRole === "doctor";
 
-  if (isLoading) {
+  const { data: ticket, isLoading, refetch } = useTicketDetail(id || "");
+
+  // Load comments and attachments
+  useEffect(() => {
+    if (id) {
+      loadTicketData();
+    }
+  }, [id]);
+
+  const loadTicketData = async () => {
+    try {
+      setLoadingComments(true);
+      const [commentsData, attachmentsData] = await Promise.all([
+        getTicketComments(id),
+        getTicketAttachments(id),
+      ]);
+      
+      setComments(commentsData);
+      setAttachments(attachmentsData);
+    } catch (error) {
+      console.error('Error loading ticket data:', error);
+      toast.error('Failed to load ticket data');
+    } finally {
+      setLoadingComments(false);
+    }
+  };
+
+  if (isLoading || loadingComments) {
     return (
       <AppLayout>
         <div className="flex items-center justify-center py-20">
@@ -63,26 +103,6 @@ const TicketDetail = () => {
   }
 
   const ticketId = `TK-${String(ticket.ticket_number).padStart(4, "0")}`;
-  const messages = ticket.ticket_messages ?? [];
-
-  const handleSendReply = () => {
-    if (!reply.trim()) return;
-
-    addMessage.mutate(
-      {
-        ticketId: ticket.id,
-        content: reply.trim(),
-        isAgent: isAdmin,
-      },
-      {
-        onSuccess: () => {
-          setReply("");
-          toast.success("Reply sent successfully");
-        },
-        onError: (err) => toast.error(err.message),
-      }
-    );
-  };
 
   const handleStatusChange = (newStatus) => {
     updateTicketStatus.mutate(
@@ -93,6 +113,15 @@ const TicketDetail = () => {
         onError: (err) => toast.error(err.message),
       }
     );
+  };
+
+  const handleDownloadAttachment = async (attachment) => {
+    try {
+      const signedUrl = await getSignedUrl(attachment.file_path);
+      window.open(signedUrl, '_blank');
+    } catch (error) {
+      toast.error('Failed to download attachment');
+    }
   };
 
   return (
@@ -117,13 +146,11 @@ const TicketDetail = () => {
                 </span>
                 <StatusBadge status={ticket.status} />
                 <PriorityIndicator priority={ticket.priority} />
-                <span
-                  className={`inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-medium ${
-                    typeConfig[ticket.type]?.color || ""
-                  }`}
-                >
-                  {typeConfig[ticket.type]?.label || ticket.type}
-                </span>
+                {ticket.category && (
+                  <span className="inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-medium bg-secondary text-secondary-foreground">
+                    {categoryLabels[ticket.category] || ticket.category}
+                  </span>
+                )}
               </div>
 
               <h1 className="text-xl font-bold text-card-foreground">
@@ -134,7 +161,53 @@ const TicketDetail = () => {
                 {ticket.description}
               </p>
             </div>
+
+            {/* Quick actions for staff */}
+            {isAgent && (
+              <div className="flex flex-col gap-2">
+                {!ticket.assigned_to && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setShowAssignDialog(true)}
+                  >
+                    <UserPlus className="h-4 w-4 mr-2" />
+                    Assign
+                  </Button>
+                )}
+                {ticket.assignee && (
+                  <div className="text-sm">
+                    <p className="text-xs text-muted-foreground">Assigned to</p>
+                    <p className="font-medium">{ticket.assignee.full_name}</p>
+                  </div>
+                )}
+              </div>
+            )}
           </div>
+
+          {/* Attachments from ticket */}
+          {ticket.attachment_url && (
+            <div className="mt-4 rounded-lg border border-border bg-secondary/40 p-4">
+              <div className="flex items-center gap-2 text-xs font-medium text-muted-foreground">
+                <Image className="h-4 w-4 text-primary" />
+                Attached photo
+              </div>
+              <a
+                href={ticket.attachment_url}
+                target="_blank"
+                rel="noreferrer"
+                className="mt-2 inline-flex text-sm font-medium text-primary hover:underline"
+              >
+                {ticket.attachment_name || "View attachment"}
+              </a>
+              <img
+                src={ticket.attachment_url}
+                alt={ticket.attachment_name || "Ticket attachment"}
+                className="mt-3 w-full max-w-md rounded-lg border border-border object-cover"
+                loading="lazy"
+              />
+            </div>
+          )}
 
           {/* Meta info */}
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mt-6 pt-4 border-t border-border">
@@ -231,87 +304,77 @@ const TicketDetail = () => {
         </div>
 
         {/* Conversation */}
-        <div className="rounded-xl border border-border bg-card shadow-card">
-          <div className="p-4 border-b border-border">
-            <h2 className="text-sm font-semibold text-card-foreground">
-              Conversation ({messages.length})
-            </h2>
-          </div>
-
-          <div className="divide-y divide-border">
-            {messages.map((msg) => (
-              <div key={msg.id} className="p-4">
-                <div className="flex items-start gap-3">
-                  <div
-                    className={cn(
-                      "flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-xs font-semibold",
-                      msg.is_agent
-                        ? "gradient-primary text-primary-foreground"
-                        : "bg-secondary text-secondary-foreground"
-                    )}
-                  >
-                    {msg.is_agent ? (
-                      <Hospital className="h-3.5 w-3.5" />
-                    ) : (
-                      <UserCircle className="h-3.5 w-3.5" />
-                    )}
-                  </div>
-
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <span className="text-sm font-medium text-foreground">
-                        {msg.sender?.full_name ?? "Unknown"}
-                      </span>
-
-                      <span className="text-xs text-muted-foreground">
-                        {format(
-                          new Date(msg.created_at),
-                          "MMM d, yyyy 'at' h:mm a"
-                        )}
-                      </span>
-
-                      {msg.is_agent && (
-                        <span className="rounded-full bg-accent px-2 py-0.5 text-[10px] font-medium text-accent-foreground">
-                          Staff
-                        </span>
-                      )}
-                    </div>
-
-                    <p className="mt-1 text-sm text-muted-foreground leading-relaxed">
-                      {msg.content}
-                    </p>
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-
-          {/* Reply box */}
-          <div className="p-4 border-t border-border">
-            <div className="flex gap-3">
-              <textarea
-                value={reply}
-                onChange={(e) => setReply(e.target.value)}
-                placeholder="Type your reply..."
-                rows={3}
-                className="flex-1 rounded-lg border border-input bg-background px-4 py-2.5 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:border-transparent transition-all resize-none"
-                maxLength={2000}
+        <Card className="shadow-card">
+          <CardHeader className="border-b border-border">
+            <CardTitle className="text-base">Conversation</CardTitle>
+          </CardHeader>
+          <CardContent className="p-0">
+            <div className="h-[600px]">
+              <RealtimeChat
+                ticketId={ticket.id}
+                ticketTitle={ticket.title}
+                ticketDescription={ticket.description}
+                category={ticket.category}
+                initialComments={comments}
               />
             </div>
+          </CardContent>
+        </Card>
 
-            <div className="mt-3 flex justify-end">
-              <button
-                onClick={handleSendReply}
-                disabled={!reply.trim() || addMessage.isPending}
-                className="inline-flex items-center gap-2 rounded-lg gradient-primary px-5 py-2 text-sm font-semibold text-primary-foreground shadow-sm transition-all hover:opacity-90 hover:shadow-md active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                <Send className="h-4 w-4" />
-                Send Reply
-              </button>
-            </div>
-          </div>
-        </div>
+        {/* Attachments */}
+        {attachments.length > 0 && (
+          <Card className="shadow-card">
+            <CardHeader>
+              <CardTitle className="text-base">Attachments ({attachments.length})</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                {attachments.map((attachment) => (
+                  <div
+                    key={attachment.id}
+                    className="flex items-center gap-3 p-3 rounded-lg border border-border hover:bg-muted/50 transition-colors"
+                  >
+                    <div className="flex-shrink-0">
+                      {attachment.file_type.startsWith('image/') ? (
+                        <Image className="h-5 w-5 text-primary" />
+                      ) : (
+                        <FileText className="h-5 w-5 text-primary" />
+                      )}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium text-foreground truncate">
+                        {attachment.file_name}
+                      </p>
+                      <p className="text-xs text-muted-foreground">
+                        {(attachment.file_size / 1024).toFixed(1)} KB • {attachment.uploader?.full_name}
+                      </p>
+                    </div>
+                    <button
+                      onClick={() => handleDownloadAttachment(attachment)}
+                      className="flex-shrink-0 p-2 rounded-md hover:bg-muted transition-colors"
+                    >
+                      <Download className="h-4 w-4" />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+        )}
       </div>
+
+      {/* Assignment Dialog */}
+      {isAgent && (
+        <AssignmentDialog
+          open={showAssignDialog}
+          onOpenChange={setShowAssignDialog}
+          ticket={ticket}
+          onAssigned={(updatedTicket) => {
+            refetch();
+            toast.success('Ticket assigned successfully');
+          }}
+        />
+      )}
     </AppLayout>
   );
 };

@@ -1,4 +1,4 @@
-import *"react";
+import * as React from "react";
 import { import { Command"cmdk";
 import { Search } from "lucide-react";
 
@@ -107,3 +107,4 @@ export {
   CommandShortcut,
   CommandSeparator,
 };
+

@@ -5,86 +5,86 @@ const AuthContext = createContext(undefined);
 
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
-  const [session, setSession] = useState(null);
-  const [isAdmin, setIsAdmin] = useState(false);
   const [loading, setLoading] = useState(true);
 
-  const checkAdmin = async (userId) => {
-    const { data } = await supabase
-      .from("user_roles")
-      .select("role")
-      .eq("user_id", userId)
-      .eq("role", "admin")
-      .maybeSingle();
-
-    setIsAdmin(!!data);
-  };
-
   useEffect(() => {
-    const { data: authListener } = supabase.auth.onAuthStateChange(
-      async (_event, session) => {
-        setSession(session);
-        setUser(session?.user ?? null);
+    let mounted = true;
 
-        if (session?.user) {
-          await checkAdmin(session.user.id);
-        } else {
-          setIsAdmin(false);
+    const updateSessionState = (nextSession) => {
+      if (!mounted) return;
+      setUser(nextSession?.user ?? null);
+    };
+
+    const initializeAuth = async () => {
+      try {
+        const { data, error } = await supabase.auth.getSession();
+        if (error) {
+          throw error;
         }
 
-        setLoading(false);
+        updateSessionState(data.session);
+      } catch (error) {
+        console.error("Auth initialization error:", error);
+      } finally {
+        if (mounted) {
+          setLoading(false);
+        }
+      }
+    };
+
+    initializeAuth();
+
+    // Listen to auth state changes (handles login/logout/token refresh)
+    const { data: authListener } = supabase.auth.onAuthStateChange(
+      async (event, nextSession) => {
+        console.log("Auth state changed:", event);
+        try {
+          updateSessionState(nextSession);
+        } finally {
+          if (mounted) {
+            setLoading(false);
+          }
+        }
       }
     );
 
-    supabase.auth.getSession().then(({ data }) => {
-      const session = data.session;
-
-      setSession(session);
-      setUser(session?.user ?? null);
-
-      if (session?.user) {
-        checkAdmin(session.user.id);
+    // Handle storage events for cross-tab synchronization
+    const handleStorageChange = async (e) => {
+      // Check if Supabase auth storage changed in another tab
+      if (e.key && e.key.includes('sb-') && e.key.includes('-auth-token')) {
+        console.log("Storage changed in another tab, syncing session...");
+        const { data } = await supabase.auth.getSession();
+        updateSessionState(data.session);
       }
+    };
 
-      setLoading(false);
-    });
+    // Listen for storage changes (when other tabs login/logout)
+    window.addEventListener('storage', handleStorageChange);
+
+    // Also listen for visibility changes to refresh session when tab becomes active
+    const handleVisibilityChange = async () => {
+      if (!document.hidden && mounted) {
+        const { data } = await supabase.auth.getSession();
+        updateSessionState(data.session);
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
 
     return () => {
+      mounted = false;
       authListener.subscription.unsubscribe();
+      window.removeEventListener('storage', handleStorageChange);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
     };
   }, []);
 
-  const signUp = async (email, password, fullName) => {
-    const { error } = await supabase.auth.signUp({
-      email,
-      password,
-      options: {
-        data: {
-          full_name: fullName,
-        },
-        emailRedirectTo: window.location.origin,
-      },
-    });
-
-    return { error };
-  };
-
-  const signIn = async (email, password) => {
-    const { error } = await supabase.auth.signInWithPassword({
-      email,
-      password,
-    });
-
-    return { error };
-  };
-
-  const signOut = async () => {
-    await supabase.auth.signOut();
-  };
-
   return (
     <AuthContext.Provider
-      value={{ user, session, isAdmin, loading, signUp, signIn, signOut }}
+      value={{
+        user,
+        loading,
+      }}
     >
       {children}
     </AuthContext.Provider>

@@ -1,5 +1,5 @@
-import *"react";
-import *"@radix-ui/react-toggle-group";
+import * as React from "react";
+import * as ToggleGroupPrimitive from "@radix-ui/react-toggle-group";
 import { 
 import { cn } from "@/lib/utils";
 import { toggleVariants } from "@/components/ui/toggle";
@@ -40,3 +40,4 @@ const ToggleGroupItem = React.forwardRef(({ className, children, variant, size, 
 ToggleGroupItem.displayName = ToggleGroupPrimitive.Item.displayName;
 
 export { ToggleGroup, ToggleGroupItem };
+

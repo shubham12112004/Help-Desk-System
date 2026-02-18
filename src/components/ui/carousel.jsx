@@ -1,4 +1,4 @@
-import *"react";
+import * as React from "react";
 import useEmblaCarousel, { import { ArrowLeft, ArrowRight } from "lucide-react";
 
 import { cn } from "@/lib/utils";

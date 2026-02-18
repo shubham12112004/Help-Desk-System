@@ -1,5 +1,5 @@
-import *"react";
-import *"recharts";
+import * as React from "react";
+import * as RechartsPrimitive from "recharts";
 
 import { cn } from "@/lib/utils";
 
@@ -268,3 +268,4 @@ function getPayloadConfigFromPayload(config, payload, key) {
 }
 
 export { ChartContainer, ChartTooltip, ChartTooltipContent, ChartLegend, ChartLegendContent, ChartStyle };
+

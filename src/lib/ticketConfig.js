@@ -1,8 +1,8 @@
 export const statusConfig = {
-  open: { label: "Open", className: "bg-blue-500 text-white" },
-  "in-progress": { label: "In Progress", className: "bg-yellow-500 text-black" },
-  resolved: { label: "Resolved", className: "bg-green-500 text-white" },
-  closed: { label: "Closed", className: "bg-gray-500 text-white" },
+  open: { label: "Open", className: "bg-gradient-to-r from-blue-500/20 to-blue-600/10 text-blue-600 dark:text-blue-400 border border-blue-500/30 shadow-sm shadow-blue-500/20" },
+  "in-progress": { label: "In Progress", className: "bg-gradient-to-r from-yellow-500/20 to-yellow-600/10 text-yellow-600 dark:text-yellow-400 border border-yellow-500/30 shadow-sm shadow-yellow-500/20" },
+  resolved: { label: "Resolved", className: "bg-gradient-to-r from-green-500/20 to-green-600/10 text-green-600 dark:text-green-400 border border-green-500/30 shadow-sm shadow-green-500/20" },
+  closed: { label: "Closed", className: "bg-gradient-to-r from-gray-500/20 to-gray-600/10 text-gray-600 dark:text-gray-400 border border-gray-500/30 shadow-sm shadow-gray-500/20" },
 };
 
 export const priorityConfig = {

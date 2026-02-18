@@ -6,7 +6,7 @@ export function StatusBadge({ status, className }) {
   return (
     <span
       className={cn(
-        "inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold",
+        "inline-flex items-center rounded-full px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wider transition-all duration-300 hover:scale-105",
         config.className,
         className
       )}

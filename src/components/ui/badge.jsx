@@ -1,5 +1,5 @@
-import *"react";
-import { cva, 
+import * as React from "react";
+import { cva } from "class-variance-authority";
 import { cn } from "@/lib/utils";
 
 const badgeVariants = cva(
@@ -25,3 +25,4 @@ function Badge({ className, variant, ...props }) {
 }
 
 export { Badge, badgeVariants };
+

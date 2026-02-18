@@ -6,20 +6,35 @@ import {
   Settings,
   Hospital,
   LogOut,
+  X,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/hooks/useAuth";
+import { supabase } from "@/integrations/supabase/client";
 
-const navItems = [
-  { to: "/", icon: LayoutDashboard, label: "Dashboard" },
-  { to: "/tickets", icon: Ticket, label: "Tickets" },
-  { to: "/create", icon: PlusCircle, label: "New Ticket" },
-  { to: "/settings", icon: Settings, label: "Settings" },
-];
-
-export function AppSidebar() {
+export function AppSidebar({ isOpen = true, onClose = () => {} }) {
   const location = useLocation();
-  const { user, isAdmin, signOut } = useAuth();
+  const { user } = useAuth();
+  const userRole = user?.user_metadata?.role ?? "citizen";
+  const isStaff = userRole === "staff" || userRole === "admin";
+
+  const navItems = [
+    { to: "/", icon: LayoutDashboard, label: "Dashboard" },
+    { to: "/tickets", icon: Ticket, label: isStaff ? "All Tickets" : "My Tickets" },
+    { to: "/create", icon: PlusCircle, label: "New Ticket" },
+    { to: "/settings", icon: Settings, label: "Settings" },
+  ];
+
+  const roleLabel = {
+    admin: "Admin",
+    staff: "Staff",
+    citizen: "Citizen",
+    user: "Citizen",
+  }[userRole];
+
+  const handleSignOut = async () => {
+    await supabase.auth.signOut();
+  };
 
   const initials = user?.user_metadata?.full_name
     ? user.user_metadata.full_name
@@ -31,16 +46,39 @@ export function AppSidebar() {
     : user?.email?.slice(0, 2).toUpperCase() ?? "U";
 
   return (
-    <aside className="fixed left-0 top-0 z-40 flex h-screen w-64 flex-col border-r border-border bg-card">
+    <>
+      <div
+        onClick={onClose}
+        className={cn(
+          "fixed inset-0 z-40 bg-black/40 transition-opacity lg:hidden",
+          isOpen ? "opacity-100" : "pointer-events-none opacity-0"
+        )}
+      />
+      <aside
+        className={cn(
+          "fixed left-0 top-0 z-50 flex h-screen w-64 flex-col border-r border-border bg-card transition-transform",
+          isOpen ? "translate-x-0 lg:translate-x-0" : "-translate-x-full lg:-translate-x-full"
+        )}
+      >
       {/* Logo */}
-      <div className="flex h-16 items-center gap-3 border-b border-border px-6">
-        <div className="flex h-9 w-9 items-center justify-center rounded-lg gradient-primary">
-          <Hospital className="h-5 w-5 text-primary-foreground" />
+      <div className="flex h-16 items-center justify-between gap-3 border-b border-border px-6">
+        <div className="flex items-center gap-3">
+          <div className="flex h-9 w-9 items-center justify-center rounded-lg gradient-primary">
+            <Hospital className="h-5 w-5 text-primary-foreground" />
+          </div>
+          <div>
+            <h1 className="text-base font-bold text-foreground">MedDesk</h1>
+            <p className="text-xs text-muted-foreground">Hospital Help Desk</p>
+          </div>
         </div>
-        <div>
-          <h1 className="text-base font-bold text-foreground">MedDesk</h1>
-          <p className="text-xs text-muted-foreground">Hospital Help Desk</p>
-        </div>
+        <button
+          type="button"
+          onClick={onClose}
+          className="inline-flex h-8 w-8 items-center justify-center rounded-md text-muted-foreground transition hover:bg-accent hover:text-foreground lg:hidden"
+          aria-label="Close sidebar"
+        >
+          <X className="h-4 w-4" />
+        </button>
       </div>
 
       {/* Navigation */}
@@ -57,6 +95,7 @@ export function AppSidebar() {
             <Link
               key={item.to}
               to={item.to}
+              onClick={onClose}
               className={cn(
                 "flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-all duration-200",
                 isActive
@@ -83,12 +122,12 @@ export function AppSidebar() {
               {user?.user_metadata?.full_name || user?.email}
             </p>
             <p className="text-xs text-muted-foreground">
-              {isAdmin ? "Admin" : "Staff"}
+              {roleLabel || "Citizen"}
             </p>
           </div>
 
           <button
-            onClick={signOut}
+            onClick={handleSignOut}
             className="text-muted-foreground hover:text-foreground transition-colors"
             title="Sign out"
           >
@@ -96,6 +135,7 @@ export function AppSidebar() {
           </button>
         </div>
       </div>
-    </aside>
+      </aside>
+    </>
   );
 }
