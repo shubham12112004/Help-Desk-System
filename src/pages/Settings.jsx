@@ -18,7 +18,6 @@ import { supabase } from "@/integrations/supabase/client";
 import {
   getUserSettings,
   updateUserSettings,
-  updateUserProfile,
   updateUserPassword,
   exportUserData,
   deactivateUserAccount,
@@ -31,12 +30,11 @@ import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
-import { useToast } from "@/hooks/use-toast";
+import { toast } from "sonner";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 
 const Settings = () => {
   const { user, loading: authLoading } = useAuth();
-  const { toast } = useToast();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [profile, setProfile] = useState(null);
@@ -56,114 +54,123 @@ const Settings = () => {
   }, [user, authLoading]);
 
   const loadUserData = async () => {
-    try {
-      setLoading(true);
-      // Load profile
-      const { data: profileData, error: profileError } = await supabase
-        .from("profiles")
-        .select("*")
-        .eq("id", user.id)
-        .single();
-
-      if (profileError) throw profileError;
-      setProfile(profileData);
-
-      // Load settings
-      try {
-        const settingsData = await getUserSettings();
-        setSettings(settingsData);
-      } catch (settingsError) {
-        console.error("Settings error:", settingsError);
-        // If table doesn't exist, use default settings
-        if (settingsError.message?.includes("relation") || settingsError.code === "42P01") {
-          console.warn("user_settings table not found, using defaults");
-          setMigrationNeeded(true);
-          setSettings({
-            email_notifications: true,
-            push_notifications: true,
-            sms_notifications: false,
-            notify_ticket_created: true,
-            notify_ticket_assigned: true,
-            notify_ticket_updated: true,
-            notify_ticket_commented: true,
-            notify_ticket_resolved: true,
-            notify_appointment_reminder: true,
-            notify_sla_warning: true,
-            theme: 'system',
-            language: 'en',
-            date_format: 'MM/DD/YYYY',
-            time_format: '12h',
-            default_dashboard_view: 'grid',
-            tickets_per_page: 10,
-            profile_visible: true,
-            show_online_status: true,
-            daily_digest: false,
-            weekly_summary: true,
-            enable_sound: true,
-          });
-          toast({
-            title: "Note",
-            description: "Settings table not found. Using default settings. Please apply the database migration.",
-            variant: "default",
-          });
-        } else {
-          throw settingsError;
-        }
-      }
-    } catch (error) {
-      console.error("Error loading user data:", error);
-      toast({
-        title: "Error",
-        description: "Failed to load settings: " + error.message,
-        variant: "destructive",
-      });
-    } finally {
+    if (!user || !user.id) {
+      console.warn("No user session found");
       setLoading(false);
+      return;
     }
-  };
 
-  const handleProfileUpdate = async () => {
+    setLoading(true);
+    console.log("Loading profile for user ID:", user.id);
+    
+    // Load profile with common fields that exist in both schemas
+    let profileData = null;
+    
+    // Try user_id first (old schema)
     try {
-      setSaving(true);
-      await updateUserProfile(profile);
-      toast({
-        title: "Success",
-        description: "Profile updated successfully",
-      });
-    } catch (error) {
-      toast({
-        title: "Error",
-        description: "Failed to update profile",
-        variant: "destructive",
-      });
-    } finally {
-      setSaving(false);
+      const result = await supabase
+        .from("profiles")
+        .select("id, user_id, email, full_name, phone, avatar_url, department, address, emergency_contact")
+        .eq("user_id", user.id)
+        .limit(1);
+      
+      if (result.data && result.data.length > 0) {
+        profileData = result.data[0];
+        console.log("Profile loaded via user_id (old schema)");
+      } else if (result.error) {
+        console.log("Old schema query error:", result.error.message);
+      }
+    } catch (err) {
+      console.log("Old schema query failed:", err.message);
     }
+
+    // If user_id doesn't work or returned no data, try id (new schema)
+    if (!profileData) {
+      try {
+        const result = await supabase
+          .from("profiles")
+          .select("id, email, full_name, role, phone, avatar_url, department, address, emergency_contact")
+          .eq("id", user.id)
+          .limit(1);
+        
+        if (result.data && result.data.length > 0) {
+          profileData = result.data[0];
+          console.log("Profile loaded via id (new schema)");
+        } else if (result.error) {
+          console.log("New schema query error:", result.error.message);
+        }
+      } catch (err) {
+        console.log("New schema query failed:", err.message);
+      }
+    }
+
+    // Set profile data or create empty profile with user's email
+    if (profileData) {
+      console.log("Profile loaded successfully:", profileData);
+      setProfile(profileData);
+    } else {
+      console.warn("No profile found, using default profile");
+      // Create a basic profile object with user email
+      setProfile({
+        email: user.email,
+        full_name: "",
+        phone: "",
+        department: "",
+        address: "",
+        emergency_contact: "",
+      });
+    }
+
+    // Load settings
+    try {
+      const settingsData = await getUserSettings();
+      setSettings(settingsData);
+      console.log("Settings loaded successfully");
+    } catch (settingsError) {
+      console.warn("Settings not available, using defaults:", settingsError.message);
+      // Always use default settings if load fails - don't show error to user
+      setMigrationNeeded(true);
+      setSettings({
+        email_notifications: true,
+        push_notifications: true,
+        sms_notifications: false,
+        notify_ticket_created: true,
+        notify_ticket_assigned: true,
+        notify_ticket_updated: true,
+        notify_ticket_commented: true,
+        notify_ticket_resolved: true,
+        notify_appointment_reminder: true,
+        notify_sla_warning: true,
+        theme: 'system',
+        language: 'en',
+        date_format: 'MM/DD/YYYY',
+        time_format: '12h',
+        default_dashboard_view: 'grid',
+        tickets_per_page: 10,
+        profile_visible: true,
+        show_online_status: true,
+        daily_digest: false,
+        weekly_summary: true,
+        enable_sound: true,
+      });
+    }
+    
+    setLoading(false);
   };
 
   const handleSettingsUpdate = async () => {
     if (migrationNeeded) {
-      toast({
-        title: "Migration Required",
-        description: "Please apply the database migration to save settings changes.",
-        variant: "destructive",
-      });
+      toast.error("Please apply the database migration to save settings changes.");
       return;
     }
 
     try {
       setSaving(true);
       await updateUserSettings(settings);
-      toast({
-        title: "Success",
-        description: "Settings updated successfully",
-      });
+      toast.success("Settings updated successfully");
     } catch (error) {
-      toast({
-        title: "Error",
-        description: "Failed to update settings",
-        variant: "destructive",
-      });
+      console.error("Settings update error:", error);
+      toast.error("Failed to update settings: " + (error.message || "Unknown error"));
     } finally {
       setSaving(false);
     }
@@ -171,20 +178,12 @@ const Settings = () => {
 
   const handlePasswordUpdate = async () => {
     if (passwordData.newPassword !== passwordData.confirmPassword) {
-      toast({
-        title: "Error",
-        description: "Passwords do not match",
-        variant: "destructive",
-      });
+      toast.error("Passwords do not match");
       return;
     }
 
     if (passwordData.newPassword.length < 6) {
-      toast({
-        title: "Error",
-        description: "Password must be at least 6 characters",
-        variant: "destructive",
-      });
+      toast.error("Password must be at least 6 characters");
       return;
     }
 
@@ -192,16 +191,10 @@ const Settings = () => {
       setSaving(true);
       await updateUserPassword(passwordData.newPassword);
       setPasswordData({ newPassword: "", confirmPassword: "" });
-      toast({
-        title: "Success",
-        description: "Password updated successfully",
-      });
+      toast.success("Password updated successfully");
     } catch (error) {
-      toast({
-        title: "Error",
-        description: "Failed to update password",
-        variant: "destructive",
-      });
+      console.error("Password update error:", error);
+      toast.error("Failed to update password: " + (error.message || "Unknown error"));
     } finally {
       setSaving(false);
     }
@@ -218,16 +211,10 @@ const Settings = () => {
       a.download = `user-data-${new Date().toISOString()}.json`;
       a.click();
       URL.revokeObjectURL(url);
-      toast({
-        title: "Success",
-        description: "User data exported successfully",
-      });
+      toast.success("User data exported successfully");
     } catch (error) {
-      toast({
-        title: "Error",
-        description: "Failed to export data",
-        variant: "destructive",
-      });
+      console.error("Export data error:", error);
+      toast.error("Failed to export data: " + (error.message || "Unknown error"));
     } finally {
       setSaving(false);
     }
@@ -237,16 +224,10 @@ const Settings = () => {
     try {
       setSaving(true);
       await deactivateUserAccount();
-      toast({
-        title: "Account Deactivated",
-        description: "Your account has been deactivated",
-      });
+      toast.success("Your account has been deactivated");
     } catch (error) {
-      toast({
-        title: "Error",
-        description: "Failed to deactivate account",
-        variant: "destructive",
-      });
+      console.error("Deactivate account error:", error);
+      toast.error("Failed to deactivate account: " + (error.message || "Unknown error"));
     } finally {
       setSaving(false);
     }
@@ -389,11 +370,6 @@ const Settings = () => {
                     onChange={(e) => setProfile({ ...profile, emergency_contact: e.target.value })}
                   />
                 </div>
-
-                <Button onClick={handleProfileUpdate} disabled={saving}>
-                  {saving ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Save className="h-4 w-4 mr-2" />}
-                  Save Changes
-                </Button>
               </CardContent>
             </Card>
           </TabsContent>

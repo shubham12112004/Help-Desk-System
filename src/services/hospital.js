@@ -157,7 +157,7 @@ export async function createMedicineRequest(request) {
       request.patient_id,
       'Medicine Request',
       'Your pharmacy request has been submitted',
-      'medicine'
+      'system_alert'
     );
 
     return { data, error: null };
@@ -260,7 +260,7 @@ export async function createAppointment(appointment) {
       appointment.patient_id,
       'Appointment Scheduled',
       `Your appointment is scheduled for ${appointment.appointment_date}`,
-      'appointment'
+      'appointment_scheduled'
     );
 
     return { data, error: null };
@@ -327,7 +327,7 @@ export async function requestAmbulance(request) {
       request.patient_id,
       'Ambulance Request',
       'Your ambulance request has been submitted',
-      'ambulance'
+      'system_alert'
     );
 
     return { data, error: null };

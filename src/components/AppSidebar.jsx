@@ -9,6 +9,13 @@ import {
   X,
   Users,
   BarChart3,
+  User,
+  Bed,
+  Pill,
+  Microscope,
+  Calendar,
+  Ambulance,
+  CreditCard,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/hooks/useAuth";
@@ -59,14 +66,15 @@ export function AppSidebar({ isOpen = true, onClose = () => {} }) {
       <div
         onClick={onClose}
         className={cn(
-          "fixed inset-0 z-40 bg-black/40 transition-opacity lg:hidden",
+          "fixed inset-0 z-40 bg-black/40 transition-opacity",
           isOpen ? "opacity-100" : "pointer-events-none opacity-0"
         )}
       />
       <aside
+        onClick={(e) => e.stopPropagation()}
         className={cn(
           "fixed left-0 top-0 z-50 flex h-screen w-64 flex-col border-r border-border bg-card transition-transform",
-          isOpen ? "translate-x-0 lg:translate-x-0" : "-translate-x-full lg:-translate-x-full"
+          isOpen ? "translate-x-0" : "-translate-x-full"
         )}
       >
       {/* Logo */}
@@ -118,6 +126,47 @@ export function AppSidebar({ isOpen = true, onClose = () => {} }) {
           );
         })}
       </nav>
+
+      {/* Hospital Services - For patients */}
+      {!isStaff && (
+        <div className="border-t border-border px-3 py-4">
+          <p className="text-xs font-semibold text-muted-foreground uppercase px-3 mb-3">
+            Hospital Services
+          </p>
+          <nav className="space-y-1">
+            {[
+              { to: "/patient-profile", icon: User, label: "My Profile" },
+              { to: "/token-queue", icon: Ticket, label: "OPD Token" },
+              { to: "/medical", icon: Bed, label: "Medical Info" },
+              { to: "/pharmacy", icon: Pill, label: "Pharmacy" },
+              { to: "/lab-tests", icon: Microscope, label: "Lab Reports" },
+              { to: "/appointments", icon: Calendar, label: "Appointments" },
+              { to: "/emergency", icon: Ambulance, label: "Emergency" },
+              { to: "/billing", icon: CreditCard, label: "Billing" },
+            ].map((item) => {
+              const isActive = location.pathname === item.to;
+              const Icon = item.icon;
+
+              return (
+                <Link
+                  key={item.to}
+                  to={item.to}
+                  onClick={onClose}
+                  className={cn(
+                    "flex items-center gap-3 rounded-lg px-3 py-2 text-xs font-medium transition-all duration-200",
+                    isActive
+                      ? "bg-accent text-accent-foreground"
+                      : "text-muted-foreground hover:bg-secondary hover:text-foreground"
+                  )}
+                >
+                  <Icon className="h-3.5 w-3.5" />
+                  {item.label}
+                </Link>
+              );
+            })}
+          </nav>
+        </div>
+      )}
 
       {/* User info */}
       <div className="border-t border-border p-4">

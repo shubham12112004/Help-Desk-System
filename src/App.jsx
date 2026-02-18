@@ -18,6 +18,14 @@ import NotFound from "./pages/NotFound";
 import AdminDashboard from "./pages/AdminDashboard";
 import StaffRoster from "./pages/StaffRoster";
 import HospitalAnalytics from "./pages/HospitalAnalytics";
+import PatientProfile from "./pages/PatientProfile";
+import Medical from "./pages/Medical";
+import Pharmacy from "./pages/Pharmacy";
+import LabTests from "./pages/LabTests";
+import HospitalAppointments from "./pages/HospitalAppointments";
+import Emergency from "./pages/Emergency";
+import HospitalBilling from "./pages/HospitalBilling";
+import TokenQueue from "./pages/TokenQueue";
 import { Suspense } from "react";
 
 const queryClient = new QueryClient();
@@ -116,6 +124,72 @@ const App = () => {
                     element={
                       <ProtectedRoute>
                         <HospitalAnalytics />
+                      </ProtectedRoute>
+                    }
+                  />
+
+                  {/* Patient Hospital Services */}
+                  <Route
+                    path="/patient-profile"
+                    element={
+                      <ProtectedRoute>
+                        <PatientProfile />
+                      </ProtectedRoute>
+                    }
+                  />
+                  <Route
+                    path="/token-queue"
+                    element={
+                      <ProtectedRoute>
+                        <TokenQueue />
+                      </ProtectedRoute>
+                    }
+                  />
+                  <Route
+                    path="/medical"
+                    element={
+                      <ProtectedRoute>
+                        <Medical />
+                      </ProtectedRoute>
+                    }
+                  />
+                  <Route
+                    path="/pharmacy"
+                    element={
+                      <ProtectedRoute>
+                        <Pharmacy />
+                      </ProtectedRoute>
+                    }
+                  />
+                  <Route
+                    path="/lab-tests"
+                    element={
+                      <ProtectedRoute>
+                        <LabTests />
+                      </ProtectedRoute>
+                    }
+                  />
+                  <Route
+                    path="/appointments"
+                    element={
+                      <ProtectedRoute>
+                        <HospitalAppointments />
+                      </ProtectedRoute>
+                    }
+                  />
+                  <Route
+                    path="/emergency"
+                    element={
+                      <ProtectedRoute>
+                        <Emergency />
+                      </ProtectedRoute>
+                    }
+                  />
+                  <Route
+                    path="/billing"
+                    element={
+                      <ProtectedRoute>
+                        <HospitalBilling />
                       </ProtectedRoute>
                     }
                   />

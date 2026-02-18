@@ -3,11 +3,9 @@ import { useAuth } from "@/hooks/useAuth";
 import { useNavigate } from "react-router-dom";
 import {
   Search,
-  Bell,
   MoreVertical,
   LogOut,
   Settings,
-  User,
   Plus,
   LifeBuoy,
   MessageSquare,
@@ -27,6 +25,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ThemeToggle } from "@/components/ThemeToggle";
+import { NotificationsDropdown } from "@/components/NotificationsDropdown";
 import { cn } from "@/lib/utils";
 import {
   Dialog,
@@ -36,12 +35,11 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 
-const ProfessionalHeader = ({ onSearch, notifications = [] }) => {
+const ProfessionalHeader = ({ onSearch }) => {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
   const [searchOpen, setSearchOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
-  const [unreadCount, setUnreadCount] = useState(0);
   const [showSearchDialog, setShowSearchDialog] = useState(false);
 
   // Role colors and labels
@@ -55,12 +53,6 @@ const ProfessionalHeader = ({ onSearch, notifications = [] }) => {
 
   const userRole = user?.user_metadata?.role || "citizen";
   const roleInfo = roleConfig[userRole] || roleConfig.citizen;
-
-  // Count unread notifications
-  useEffect(() => {
-    const unread = notifications.filter((n) => !n.read).length;
-    setUnreadCount(unread);
-  }, [notifications]);
 
   const handleLogout = async () => {
     await logout();
@@ -176,69 +168,8 @@ const ProfessionalHeader = ({ onSearch, notifications = [] }) => {
               </DropdownMenuContent>
             </DropdownMenu>
 
-            {/* Notifications Dropdown */}
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="relative"
-                  title="Notifications"
-                >
-                  <Bell className="h-5 w-5" />
-                  {unreadCount > 0 && (
-                    <span className="absolute -right-1 -top-1 flex h-5 w-5 items-center justify-center rounded-full bg-destructive text-xs font-bold text-destructive-foreground">
-                      {unreadCount > 9 ? "9+" : unreadCount}
-                    </span>
-                  )}
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-80">
-                <DropdownMenuLabel className="flex items-center justify-between">
-                  <span className="font-semibold">Notifications</span>
-                  {unreadCount > 0 && (
-                    <span className="text-xs text-muted-foreground">
-                      {unreadCount} unread
-                    </span>
-                  )}
-                </DropdownMenuLabel>
-                <DropdownMenuSeparator />
-                <div className="max-h-80 overflow-y-auto">
-                  {notifications.length > 0 ? (
-                    notifications.slice(0, 5).map((notification) => (
-                      <div
-                        key={notification.id}
-                        className={cn(
-                          "px-3 py-2 text-sm cursor-pointer hover:bg-muted/50 border-b border-border/30 last:border-b-0",
-                          !notification.read && "bg-muted/30"
-                        )}
-                      >
-                        <p className="font-medium text-foreground">
-                          {notification.title}
-                        </p>
-                        <p className="text-xs text-muted-foreground line-clamp-2">
-                          {notification.message}
-                        </p>
-                        <p className="text-xs text-muted-foreground mt-1">
-                          {notification.timestamp}
-                        </p>
-                      </div>
-                    ))
-                  ) : (
-                    <div className="px-3 py-4 text-center text-sm text-muted-foreground">
-                      No notifications
-                    </div>
-                  )}
-                </div>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem
-                  onClick={() => navigate("/notifications")}
-                  className="text-center justify-center cursor-pointer text-sm text-primary hover:text-primary"
-                >
-                  View all notifications
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
+            {/* Notifications */}
+            <NotificationsDropdown />
 
             {/* Theme Toggle */}
             <div className="hidden sm:block">
@@ -295,13 +226,6 @@ const ProfessionalHeader = ({ onSearch, notifications = [] }) => {
                   >
                     <Settings className="h-4 w-4 mr-2" />
                     Settings
-                  </DropdownMenuItem>
-                  <DropdownMenuItem
-                    onClick={() => navigate("/auth")}
-                    className="cursor-pointer"
-                  >
-                    <User className="h-4 w-4 mr-2" />
-                    Update Profile
                   </DropdownMenuItem>
                 </DropdownMenuGroup>
                 <DropdownMenuSeparator />

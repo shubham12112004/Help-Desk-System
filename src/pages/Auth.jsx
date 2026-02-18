@@ -3,12 +3,11 @@ import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { Hospital, Mail, Lock, User, ArrowRight, Sparkles, LogIn, UserPlus, ChevronLeft, ChevronRight, Clock, Shield, Users, AlertTriangle, Key, Link as LinkIcon } from "lucide-react";
+import { Hospital, Mail, Lock, User, ArrowRight, Sparkles, LogIn, UserPlus, ChevronLeft, ChevronRight, Clock, Shield, Users, AlertTriangle, Link as LinkIcon } from "lucide-react";
 import { SpeechMicButton } from "@/components/SpeechMicButton";
 import { SupabaseStatus } from "@/components/SupabaseStatus";
 import { EmailTimeoutHelp } from "@/components/EmailTimeoutHelp";
 import { ThemeToggle } from "@/components/ThemeToggle";
-import OTPVerification from "@/components/OTPVerification";
 import Footer from "@/components/Footer";
 
 const Auth = () => {
@@ -50,9 +49,7 @@ const Auth = () => {
   const [retryAttempt, setRetryAttempt] = useState(0);
   const [showTimeoutHelp, setShowTimeoutHelp] = useState(false);
   const [slideIndex, setSlideIndex] = useState(0);
-  const [authMethod, setAuthMethod] = useState("password"); // password, otp, magiclink
-  const [showOTPScreen, setShowOTPScreen] = useState(false);
-  const [otpError, setOtpError] = useState(null);
+  const [authMethod, setAuthMethod] = useState("password"); // password, magiclink
   const [showResetRequest, setShowResetRequest] = useState(false);
   const [resetEmail, setResetEmail] = useState("");
   const [showResetPassword, setShowResetPassword] = useState(false);
@@ -348,51 +345,6 @@ const Auth = () => {
     }
   };
 
-  const sendOTP = async (emailAddress, fullNameValue, roleValue) => {
-    try {
-      const { data, error } = await supabase.auth.signInWithOtp({
-        email: emailAddress,
-        options: {
-          shouldCreateUser: true,
-          data: {
-            full_name: fullNameValue,
-            role: roleValue,
-          },
-        },
-      });
-
-      if (error) {
-        console.error("Send OTP error:", error.message);
-        return { error };
-      }
-
-      return { data, error: null };
-    } catch (error) {
-      console.error("Send OTP exception:", error);
-      return { error: { message: error.message || 'Failed to send OTP' } };
-    }
-  };
-
-  const verifyOTP = async (emailAddress, otpCode) => {
-    try {
-      const { data, error } = await supabase.auth.verifyOtp({
-        email: emailAddress,
-        token: otpCode,
-        type: 'email',
-      });
-
-      if (error) {
-        console.error("Verify OTP error:", error.message);
-        return { error };
-      }
-
-      return { data, error: null };
-    } catch (error) {
-      console.error("Verify OTP exception:", error);
-      return { error: { message: error.message || 'OTP verification failed' } };
-    }
-  };
-
   const sendMagicLink = async (emailAddress, fullNameValue, roleValue) => {
     try {
       const { data, error } = await supabase.auth.signInWithOtp({
@@ -427,21 +379,6 @@ const Auth = () => {
       if (isSignUp) {
         if (!fullName.trim()) {
           toast.error("Please enter your full name");
-          setLoading(false);
-          return;
-        }
-        
-        // Handle OTP authentication
-        if (authMethod === "otp") {
-          toast.info("Sending OTP to your email...", { duration: 2000 });
-          const { error } = await sendOTP(email, fullName, role);
-          
-          if (error) {
-            toast.error(error.message || "Failed to send OTP. Please try again.");
-          } else {
-            toast.success("OTP sent! Check your email and enter the code below.");
-            setShowOTPScreen(true);
-          }
           setLoading(false);
           return;
         }
@@ -599,60 +536,6 @@ const Auth = () => {
     } finally {
       setResetLoading(false);
     }
-  };
-
-  const handleVerifyOTP = async (otpCode) => {
-    setLoading(true);
-    setOtpError(null);
-    
-    try {
-      const { error, data } = await verifyOTP(email, otpCode);
-      
-      if (error) {
-        if (error.message?.includes('expired') || error.message?.includes('invalid')) {
-          setOtpError('Invalid or expired code. Please try again or request a new code.');
-        } else {
-          setOtpError(error.message || 'Verification failed. Please try again.');
-        }
-        toast.error(error.message || "OTP verification failed.");
-      } else if (data?.session) {
-        toast.success("Email verified successfully! Welcome!");
-        setShowOTPScreen(false);
-        navigate("/dashboard");
-      }
-    } catch (error) {
-      console.error("OTP verification error:", error);
-      setOtpError("An unexpected error occurred. Please try again.");
-      toast.error("OTP verification failed. Please try again.");
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleResendOTP = async () => {
-    setLoading(true);
-    setOtpError(null);
-    
-    try {
-      const { error } = await sendOTP(email, fullName, role);
-      
-      if (error) {
-        toast.error(error.message || "Failed to resend OTP.");
-      } else {
-        toast.success("New OTP sent! Check your email.");
-      }
-    } catch (error) {
-      console.error("Resend OTP error:", error);
-      toast.error("Failed to resend OTP. Please try again.");
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleCancelOTP = () => {
-    setShowOTPScreen(false);
-    setOtpError(null);
-    setLoading(false);
   };
 
   const nextSlide = () => {
@@ -1168,23 +1051,12 @@ const Auth = () => {
 
                   {/* Sign Up Form */}
                   <div className="w-1/2 px-2">
-                    {showOTPScreen ? (
-                      <OTPVerification
-                        email={email}
-                        onVerify={handleVerifyOTP}
-                        onResend={handleResendOTP}
-                        onCancel={handleCancelOTP}
-                        loading={loading}
-                        error={otpError}
-                      />
-                    ) : (
-                      <>
-                        <div className="mb-6">
-                          <h2 className="text-2xl font-bold text-foreground">Create Account</h2>
-                          <p className="text-sm text-foreground font-medium mt-1">Join our help desk system</p>
-                        </div>
+                    <div className="mb-6">
+                      <h2 className="text-2xl font-bold text-foreground">Create Account</h2>
+                      <p className="text-sm text-foreground font-medium mt-1">Join our help desk system</p>
+                    </div>
 
-                        <form onSubmit={handleSubmit} className="space-y-4">
+                    <form onSubmit={handleSubmit} className="space-y-4">
                           <div className="group relative">
                             <User className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-primary transition-colors group-focus-within:text-primary" />
                             <input
@@ -1225,7 +1097,6 @@ const Auth = () => {
                             <div className="grid gap-2">
                               {[
                                 { value: "password", icon: Lock, label: "Password", description: "Traditional password-based signup" },
-                                { value: "otp", icon: Key, label: "OTP Code", description: "Receive a 6-digit code via email" },
                                 { value: "magiclink", icon: LinkIcon, label: "Magic Link", description: "Click link in email to sign in" }
                               ].map((method) => {
                                 const Icon = method.icon;
@@ -1318,23 +1189,23 @@ const Auth = () => {
                             </p>
                           )}
 
-                          {showTimeoutHelp && !loading && (
-                            <EmailTimeoutHelp />
-                          )}
-                        </form>
+                      {showTimeoutHelp && !loading && (
+                        <EmailTimeoutHelp />
+                      )}
+                    </form>
 
-                        <div className="my-6 flex items-center gap-3">
-                          <div className="flex-1 h-px bg-gradient-to-r from-border/0 via-border/40 to-border/0" />
-                          <span className="text-xs text-slate-500 font-medium">OR</span>
-                          <div className="flex-1 h-px bg-gradient-to-r from-border/0 via-border/40 to-border/0" />
-                        </div>
+                    <div className="my-6 flex items-center gap-3">
+                      <div className="flex-1 h-px bg-gradient-to-r from-border/0 via-border/40 to-border/0" />
+                      <span className="text-xs text-slate-500 font-medium">OR</span>
+                      <div className="flex-1 h-px bg-gradient-to-r from-border/0 via-border/40 to-border/0" />
+                    </div>
 
-                        <button
-                          type="button"
-                          onClick={handleGoogleSignIn}
-                          disabled={loading}
-                          className="w-full inline-flex items-center justify-center gap-2 rounded-xl border-2 border-slate-300 bg-white px-6 py-3 text-sm font-semibold text-slate-700 shadow-sm transition-all hover:border-slate-400 hover:bg-slate-50 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
-                        >
+                    <button
+                      type="button"
+                      onClick={handleGoogleSignIn}
+                      disabled={loading}
+                      className="w-full inline-flex items-center justify-center gap-2 rounded-xl border-2 border-slate-300 bg-white px-6 py-3 text-sm font-semibold text-slate-700 shadow-sm transition-all hover:border-slate-400 hover:bg-slate-50 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
                           <svg
                             aria-hidden="true"
                             focusable="false"
@@ -1357,22 +1228,20 @@ const Auth = () => {
                               fill="#34A853"
                               d="M24 47c6.3 0 11.88-2.08 15.84-5.66l-7.4-5.75c-2.05 1.37-4.68 2.18-8.44 2.18-6.23 0-11.54-3.53-13.46-8.52l-7.98 6.2C6.51 42.62 14.62 47 24 47z"
                             />
-                          </svg>
-                          Continue with Google
-                        </button>
+                      </svg>
+                      Continue with Google
+                    </button>
 
-                        <p className="text-center text-xs text-foreground/70">
-                          Already have an account?{" "}
-                          <button
-                            type="button"
-                            onClick={() => setIsSignUp(false)}
-                            className="font-semibold text-primary hover:text-primary/80 transition-colors"
-                          >
-                            Sign in
-                          </button>
-                        </p>
-                      </>
-                    )}
+                    <p className="text-center text-xs text-foreground/70">
+                      Already have an account?{" "}
+                      <button
+                        type="button"
+                        onClick={() => setIsSignUp(false)}
+                        className="font-semibold text-primary hover:text-primary/80 transition-colors"
+                      >
+                        Sign in
+                      </button>
+                    </p>
                   </div>
                 </div>
               </div>

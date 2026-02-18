@@ -9,27 +9,39 @@ export async function getUserSettings() {
     const { data: { user }, error: userError } = await supabase.auth.getUser();
     if (userError || !user) throw new Error("User not authenticated");
 
+    console.log("Fetching settings for user:", user.id);
+
     // Try to get existing settings
     let { data, error } = await supabase
       .from("user_settings")
       .select("*")
       .eq("user_id", user.id)
-      .single();
+      .limit(1);
+
+    console.log("Settings query result:", { data, error });
 
     // If no settings exist, create default settings
-    if (error && error.code === "PGRST116") {
+    if ((!data || data.length === 0) && error?.code === "PGRST116") {
+      console.log("No settings found, creating defaults...");
       const { data: newSettings, error: createError } = await supabase
         .from("user_settings")
         .insert([{ user_id: user.id }])
         .select()
-        .single();
+        .limit(1);
 
-      if (createError) throw createError;
-      return newSettings;
+      if (createError) {
+        console.error("Error creating settings:", createError);
+        throw createError;
+      }
+      return newSettings && newSettings.length > 0 ? newSettings[0] : null;
     }
 
-    if (error) throw error;
-    return data;
+    if (error) {
+      console.error("Settings query error:", error);
+      throw error;
+    }
+    
+    return data && data.length > 0 ? data[0] : null;
   } catch (error) {
     console.error("Error fetching user settings:", error);
     throw error;
@@ -49,15 +61,33 @@ export async function updateUserSettings(settings) {
     // Remove read-only fields
     const { id, user_id, created_at, updated_at, ...updateData } = settings;
 
+    // Filter out null and undefined values
+    const cleanData = Object.fromEntries(
+      Object.entries(updateData).filter(([_, value]) => value !== null && value !== undefined)
+    );
+
+    if (Object.keys(cleanData).length === 0) {
+      console.warn("No valid settings to update");
+      return settings;
+    }
+
+    console.log("Updating settings with data:", cleanData);
+
     const { data, error } = await supabase
       .from("user_settings")
-      .update({ ...updateData, updated_at: new Date().toISOString() })
+      .update(cleanData)
       .eq("user_id", user.id)
       .select()
-      .single();
+      .limit(1);
 
-    if (error) throw error;
-    return data;
+    console.log("Settings update result:", { data, error });
+
+    if (error) {
+      console.error("Supabase settings update error:", error);
+      throw new Error(`Database error: ${error.message}`);
+    }
+    
+    return data && data.length > 0 ? data[0] : settings;
   } catch (error) {
     console.error("Error updating user settings:", error);
     throw error;
@@ -74,18 +104,66 @@ export async function updateUserProfile(profileData) {
     const { data: { user }, error: userError } = await supabase.auth.getUser();
     if (userError || !user) throw new Error("User not authenticated");
 
-    // Remove read-only fields
-    const { id, created_at, updated_at, email, role, ...updateData } = profileData;
+    // Remove read-only fields and clean data
+    const { 
+      id, 
+      user_id,
+      created_at, 
+      updated_at, 
+      email, 
+      role, 
+      is_active,
+      last_login_at,
+      employee_id,
+      ...updateData 
+    } = profileData;
 
-    const { data, error } = await supabase
+    // Filter out null and undefined values
+    const cleanData = Object.fromEntries(
+      Object.entries(updateData).filter(([_, value]) => value !== null && value !== undefined && value !== '')
+    );
+
+    // Validate data before update
+    if (Object.keys(cleanData).length === 0) {
+      console.warn("No valid fields to update");
+      return profileData;
+    }
+
+    console.log("Updating profile with data:", cleanData);
+
+    // Try updating with user_id first (old schema)
+    let result = await supabase
       .from("profiles")
-      .update({ ...updateData, updated_at: new Date().toISOString() })
-      .eq("id", user.id)
+      .update(cleanData)
+      .eq("user_id", user.id)
       .select()
-      .single();
+      .limit(1);
+    
+    console.log("Update with user_id result:", result);
+    
+    // If no rows affected, try with id (new schema)
+    if (!result.data || result.data.length === 0) {
+      console.log("Trying update with id field...");
+      result = await supabase
+        .from("profiles")
+        .update(cleanData)
+        .eq("id", user.id)
+        .select()
+        .limit(1);
+      
+      console.log("Update with id result:", result);
+    }
 
-    if (error) throw error;
-    return data;
+    if (result.error) {
+      console.error("Supabase update error:", result.error);
+      throw new Error(`Database error: ${result.error.message}`);
+    }
+    
+    if (!result.data || result.data.length === 0) {
+      throw new Error("Profile not found or no changes made");
+    }
+    
+    return result.data[0];
   } catch (error) {
     console.error("Error updating user profile:", error);
     throw error;
@@ -178,12 +256,17 @@ export async function deactivateUserAccount() {
     const { data: { user }, error: userError } = await supabase.auth.getUser();
     if (userError || !user) throw new Error("User not authenticated");
 
+    console.log("Deactivating account for user:", user.id);
+
     const { error } = await supabase
       .from("profiles")
-      .update({ is_active: false, updated_at: new Date().toISOString() })
+      .update({ is_active: false })
       .eq("id", user.id);
 
-    if (error) throw error;
+    if (error) {
+      console.error("Deactivate error:", error);
+      throw new Error(`Failed to deactivate account: ${error.message}`);
+    }
 
     // Sign out the user
     await supabase.auth.signOut();
