@@ -11,9 +11,14 @@ export function ProtectedRoute({ children }) {
   // Force a session check on mount to catch sessions from other tabs
   useEffect(() => {
     const checkSession = async () => {
-      const { data } = await supabase.auth.getSession();
-      setSessionChecked(true);
-      console.log("ProtectedRoute session check:", data.session ? "authenticated" : "not authenticated");
+      try {
+        const { data } = await supabase.auth.getSession();
+        setSessionChecked(true);
+        console.log("ProtectedRoute session check:", data.session ? "authenticated" : "not authenticated");
+      } catch (error) {
+        console.error("Session check error:", error);
+        setSessionChecked(true); // Continue even if there's an error
+      }
     };
     checkSession();
   }, []);
@@ -21,15 +26,16 @@ export function ProtectedRoute({ children }) {
   useEffect(() => {
     // Set a timeout to prevent infinite loading
     const timer = window.setTimeout(() => {
-      if (loading) {
+      if (loading && !sessionChecked) {
         console.warn("Auth loading timeout - redirecting to auth page");
         setTimeout(true);
       }
-    }, 5000); // 5 second timeout
+    }, 8000); // 8 second timeout
 
     return () => clearTimeout(timer);
-  }, [loading]);
+  }, [loading, sessionChecked]);
 
+  // Show loading screen while checking auth state
   if ((loading || !sessionChecked) && !timeout) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-background">
@@ -41,6 +47,7 @@ export function ProtectedRoute({ children }) {
     );
   }
 
+  // Redirect to auth if not authenticated
   if (!user || timeout) {
     return <Navigate to="/auth" replace />;
   }

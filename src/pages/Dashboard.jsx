@@ -14,9 +14,10 @@ import {
   Users,
   Stethoscope,
 } from "lucide-react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 
 const Dashboard = () => {
+  const navigate = useNavigate();
   const { tickets, stats, isLoading } = useTickets();
   const { user } = useAuth();
   const userRole = user?.user_metadata?.role ?? "citizen";
@@ -25,7 +26,15 @@ const Dashboard = () => {
   const recentTickets = tickets.slice(0, 5);
   const myTickets = tickets.filter((ticket) => ticket.requester_id === user?.id);
   const urgentCount = tickets.filter((ticket) => ticket.priority === "urgent").length;
-  const activeQueue = stats.open + stats.inProgress;
+  
+  // Safe stats to prevent NaN
+  const safeStats = {
+    open: stats?.open ?? 0,
+    in_progress: stats?.in_progress ?? 0,
+    resolved: stats?.resolved ?? 0,
+    closed: stats?.closed ?? 0,
+  };
+  const activeQueue = safeStats.open + safeStats.in_progress;
 
   return (
     <AppLayout>
@@ -43,91 +52,140 @@ const Dashboard = () => {
           </div>
         </div>
 
-        {/* Stats grid with stagger animation */}
+        {/* Stats grid with stagger animation - clickable cards */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
           <div className="animate-slide-up" style={{ animationDelay: '0ms' }}>
-            <StatCard
-              title="Open"
-              value={stats.open}
-              icon={<Inbox className="h-6 w-6" />}
-              accentClassName="bg-gradient-to-br from-blue-500/20 to-blue-600/20 text-blue-600 dark:text-blue-400"
-            />
+            <button
+              onClick={() => navigate('/tickets?status=open')}
+              className="w-full group rounded-2xl border border-border/50 bg-gradient-to-br from-card via-card to-card/80 p-6 shadow-lg hover:shadow-2xl hover:shadow-blue-500/10 transition-all duration-500 hover:-translate-y-1 backdrop-blur-sm text-left"
+            >
+              <div className="flex items-start justify-between">
+                <div>
+                  <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Status</p>
+                  <h3 className="text-lg font-bold text-foreground mt-2">Open</h3>
+                  <p className="text-4xl font-bold text-blue-600 dark:text-blue-400 mt-3 group-hover:scale-110 transition-transform origin-left">{isLoading ? '...' : safeStats.open}</p>
+                </div>
+                <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-br from-blue-500/20 to-blue-600/20 text-blue-600 dark:text-blue-400 shadow-lg group-hover:scale-110 group-hover:rotate-6 transition-all duration-500">
+                  <Inbox className="h-6 w-6" />
+                </div>
+              </div>
+              <p className="text-xs text-muted-foreground mt-4 pt-4 border-t border-border/50">Click to view open tickets</p>
+            </button>
           </div>
           <div className="animate-slide-up" style={{ animationDelay: '100ms' }}>
-            <StatCard
-              title="In Progress"
-              value={stats.in_progress}
-              icon={<Loader2 className="h-6 w-6 animate-spin" />}
-              accentClassName="bg-gradient-to-br from-yellow-500/20 to-yellow-600/20 text-yellow-600 dark:text-yellow-400"
-            />
+            <button
+              onClick={() => navigate('/tickets?status=in_progress')}
+              className="w-full group rounded-2xl border border-border/50 bg-gradient-to-br from-card via-card to-card/80 p-6 shadow-lg hover:shadow-2xl hover:shadow-yellow-500/10 transition-all duration-500 hover:-translate-y-1 backdrop-blur-sm text-left"
+            >
+              <div className="flex items-start justify-between">
+                <div>
+                  <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Status</p>
+                  <h3 className="text-lg font-bold text-foreground mt-2">In Progress</h3>
+                  <p className="text-4xl font-bold text-yellow-600 dark:text-yellow-400 mt-3 group-hover:scale-110 transition-transform origin-left">{isLoading ? '...' : safeStats.in_progress}</p>
+                </div>
+                <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-br from-yellow-500/20 to-yellow-600/20 text-yellow-600 dark:text-yellow-400 shadow-lg group-hover:scale-110 group-hover:rotate-6 transition-all duration-500">
+                  <Loader2 className="h-6 w-6 animate-spin" />
+                </div>
+              </div>
+              <p className="text-xs text-muted-foreground mt-4 pt-4 border-t border-border/50">Click to view in-progress tickets</p>
+            </button>
           </div>
           <div className="animate-slide-up" style={{ animationDelay: '200ms' }}>
-            <StatCard
-              title="Resolved"
-              value={stats.resolved}
-              icon={<CheckCircle2 className="h-6 w-6" />}
-              accentClassName="bg-gradient-to-br from-green-500/20 to-green-600/20 text-green-600 dark:text-green-400"
-            />
+            <button
+              onClick={() => navigate('/tickets?status=resolved')}
+              className="w-full group rounded-2xl border border-border/50 bg-gradient-to-br from-card via-card to-card/80 p-6 shadow-lg hover:shadow-2xl hover:shadow-green-500/10 transition-all duration-500 hover:-translate-y-1 backdrop-blur-sm text-left"
+            >
+              <div className="flex items-start justify-between">
+                <div>
+                  <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Status</p>
+                  <h3 className="text-lg font-bold text-foreground mt-2">Resolved</h3>
+                  <p className="text-4xl font-bold text-green-600 dark:text-green-400 mt-3 group-hover:scale-110 transition-transform origin-left">{isLoading ? '...' : safeStats.resolved}</p>
+                </div>
+                <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-br from-green-500/20 to-green-600/20 text-green-600 dark:text-green-400 shadow-lg group-hover:scale-110 group-hover:rotate-6 transition-all duration-500">
+                  <CheckCircle2 className="h-6 w-6" />
+                </div>
+              </div>
+              <p className="text-xs text-muted-foreground mt-4 pt-4 border-t border-border/50">Click to view resolved tickets</p>
+            </button>
           </div>
           <div className="animate-slide-up" style={{ animationDelay: '300ms' }}>
-            <StatCard
-              title="Closed"
-              value={stats.closed}
-              icon={<XCircle className="h-6 w-6" />}
-              accentClassName="bg-gradient-to-br from-gray-500/20 to-gray-600/20 text-gray-600 dark:text-gray-400"
-            />
+            <button
+              onClick={() => navigate('/tickets?status=closed')}
+              className="w-full group rounded-2xl border border-border/50 bg-gradient-to-br from-card via-card to-card/80 p-6 shadow-lg hover:shadow-2xl hover:shadow-gray-500/10 transition-all duration-500 hover:-translate-y-1 backdrop-blur-sm text-left"
+            >
+              <div className="flex items-start justify-between">
+                <div>
+                  <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Status</p>
+                  <h3 className="text-lg font-bold text-foreground mt-2">Closed</h3>
+                  <p className="text-4xl font-bold text-gray-600 dark:text-gray-400 mt-3 group-hover:scale-110 transition-transform origin-left">{isLoading ? '...' : safeStats.closed}</p>
+                </div>
+                <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-br from-gray-500/20 to-gray-600/20 text-gray-600 dark:text-gray-400 shadow-lg group-hover:scale-110 group-hover:rotate-6 transition-all duration-500">
+                  <XCircle className="h-6 w-6" />
+                </div>
+              </div>
+              <p className="text-xs text-muted-foreground mt-4 pt-4 border-t border-border/50">Click to view closed tickets</p>
+            </button>
           </div>
         </div>
 
         {isStaff ? (
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
-            <div className="group rounded-2xl border border-border/50 bg-gradient-to-br from-card via-card to-card/80 p-6 shadow-lg hover:shadow-2xl hover:shadow-primary/10 transition-all duration-500 hover:-translate-y-1 backdrop-blur-sm">
+            <button
+              onClick={() => navigate('/tickets')}
+              className="group rounded-2xl border border-border/50 bg-gradient-to-br from-card via-card to-card/80 p-6 shadow-lg hover:shadow-2xl hover:shadow-primary/10 transition-all duration-500 hover:-translate-y-1 backdrop-blur-sm text-left"
+            >
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">Live Operations</p>
                   <h3 className="text-lg font-bold text-foreground mt-2">Active Queue</h3>
-                  <p className="text-4xl font-bold bg-gradient-to-r from-primary to-primary/70 bg-clip-text text-transparent mt-3 group-hover:scale-110 transition-transform origin-left">{activeQueue}</p>
+                  <p className="text-4xl font-bold bg-gradient-to-r from-primary to-primary/70 bg-clip-text text-transparent mt-3 group-hover:scale-110 transition-transform origin-left">{isLoading ? '...' : activeQueue}</p>
                 </div>
                 <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-br from-primary/20 to-primary/10 text-primary shadow-lg group-hover:scale-110 group-hover:rotate-6 transition-all duration-500">
                   <Activity className="h-6 w-6" />
                 </div>
               </div>
               <p className="text-xs text-muted-foreground mt-4 pt-4 border-t border-border/50">
-                Open + in-progress tickets across departments
+                Click to view all open + in-progress tickets
               </p>
-            </div>
+            </button>
 
-            <div className="group rounded-2xl border border-border/50 bg-gradient-to-br from-card via-card to-card/80 p-6 shadow-lg hover:shadow-2xl hover:shadow-red-500/10 transition-all duration-500 hover:-translate-y-1 backdrop-blur-sm">
+            <button
+              onClick={() => navigate('/tickets?priority=urgent')}
+              className="group rounded-2xl border border-border/50 bg-gradient-to-br from-card via-card to-card/80 p-6 shadow-lg hover:shadow-2xl hover:shadow-red-500/10 transition-all duration-500 hover:-translate-y-1 backdrop-blur-sm text-left"
+            >
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">Security</p>
                   <h3 className="text-lg font-bold text-foreground mt-2">Urgent Alerts</h3>
-                  <p className="text-4xl font-bold bg-gradient-to-r from-red-500 to-red-600 bg-clip-text text-transparent mt-3 group-hover:scale-110 transition-transform origin-left">{urgentCount}</p>
+                  <p className="text-4xl font-bold bg-gradient-to-r from-red-500 to-red-600 bg-clip-text text-transparent mt-3 group-hover:scale-110 transition-transform origin-left">{isLoading ? '...' : urgentCount}</p>
                 </div>
                 <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-br from-red-500/20 to-red-600/10 text-red-500 shadow-lg group-hover:scale-110 group-hover:rotate-6 transition-all duration-500">
                   <ShieldCheck className="h-6 w-6" />
                 </div>
               </div>
               <p className="text-xs text-muted-foreground mt-4 pt-4 border-t border-border/50">
-                High priority issues needing review
+                Click to view high priority issues
               </p>
-            </div>
+            </button>
 
-            <div className="rounded-xl border border-border bg-card p-5 shadow-card">
+            <button
+              onClick={() => navigate('/staff-roster')}
+              className="group rounded-2xl border border-border/50 bg-gradient-to-br from-card via-card to-card/80 p-6 shadow-lg hover:shadow-2xl hover:shadow-emerald-500/10 transition-all duration-500 hover:-translate-y-1 backdrop-blur-sm text-left"
+            >
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Staffing</p>
                   <h3 className="text-lg font-semibold text-foreground mt-2">On Duty</h3>
                   <p className="text-3xl font-bold text-foreground mt-2">12</p>
                 </div>
-                <div className="flex h-11 w-11 items-center justify-center rounded-full bg-emerald-500/10 text-emerald-600">
+                <div className="flex h-11 w-11 items-center justify-center rounded-full bg-emerald-500/10 text-emerald-600 shadow-lg group-hover:scale-110 group-hover:rotate-6 transition-all">
                   <Users className="h-5 w-5" />
                 </div>
               </div>
               <p className="text-xs text-muted-foreground mt-3">
-                Active agents for triage and routing
+                Click to view active agents and roster
               </p>
-            </div>
+            </button>
           </div>
         ) : (
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 mb-8">

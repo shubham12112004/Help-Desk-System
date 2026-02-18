@@ -5,10 +5,15 @@ const supabaseUrl = process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL;
 const supabaseKey = process.env.VITE_SUPABASE_ANON_KEY || process.env.SUPABASE_ANON_KEY;
 
 if (!supabaseUrl || !supabaseKey) {
-  console.error('Missing Supabase credentials in environment variables');
+  console.error('❌ Missing Supabase credentials in environment variables');
+  console.error('Please add to Backend/.env:');
+  console.error('  VITE_SUPABASE_URL=your-supabase-url');
+  console.error('  VITE_SUPABASE_ANON_KEY=your-supabase-anon-key');
+  throw new Error('Supabase credentials not configured. Check Backend/.env file.');
 }
 
 const supabase = createClient(supabaseUrl, supabaseKey);
+console.log('✅ Supabase client initialized successfully');
 
 /**
  * Get user settings

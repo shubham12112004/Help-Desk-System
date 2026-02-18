@@ -7,6 +7,8 @@ import {
   Hospital,
   LogOut,
   X,
+  Users,
+  BarChart3,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/hooks/useAuth";
@@ -22,6 +24,12 @@ export function AppSidebar({ isOpen = true, onClose = () => {} }) {
     { to: "/", icon: LayoutDashboard, label: "Dashboard" },
     { to: "/tickets", icon: Ticket, label: isStaff ? "All Tickets" : "My Tickets" },
     { to: "/create", icon: PlusCircle, label: "New Ticket" },
+    ...(isStaff
+      ? [
+          { to: "/analytics", icon: BarChart3, label: "Analytics" },
+          { to: "/staff-roster", icon: Users, label: "Staff Roster" },
+        ]
+      : []),
     { to: "/settings", icon: Settings, label: "Settings" },
   ];
 

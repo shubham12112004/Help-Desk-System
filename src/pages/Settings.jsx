@@ -11,6 +11,7 @@ import {
   Trash2,
   Save,
   Loader2,
+  AlertTriangle,
 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
@@ -34,12 +35,13 @@ import { useToast } from "@/hooks/use-toast";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 
 const Settings = () => {
-  const { user } = useAuth();
+  const { user, loading: authLoading } = useAuth();
   const { toast } = useToast();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [profile, setProfile] = useState(null);
   const [settings, setSettings] = useState(null);
+  const [migrationNeeded, setMigrationNeeded] = useState(false);
   const [passwordData, setPasswordData] = useState({
     newPassword: "",
     confirmPassword: "",
@@ -48,8 +50,10 @@ const Settings = () => {
   useEffect(() => {
     if (user) {
       loadUserData();
+    } else if (!authLoading) {
+      setLoading(false);
     }
-  }, [user]);
+  }, [user, authLoading]);
 
   const loadUserData = async () => {
     try {
@@ -65,13 +69,52 @@ const Settings = () => {
       setProfile(profileData);
 
       // Load settings
-      const settingsData = await getUserSettings();
-      setSettings(settingsData);
+      try {
+        const settingsData = await getUserSettings();
+        setSettings(settingsData);
+      } catch (settingsError) {
+        console.error("Settings error:", settingsError);
+        // If table doesn't exist, use default settings
+        if (settingsError.message?.includes("relation") || settingsError.code === "42P01") {
+          console.warn("user_settings table not found, using defaults");
+          setMigrationNeeded(true);
+          setSettings({
+            email_notifications: true,
+            push_notifications: true,
+            sms_notifications: false,
+            notify_ticket_created: true,
+            notify_ticket_assigned: true,
+            notify_ticket_updated: true,
+            notify_ticket_commented: true,
+            notify_ticket_resolved: true,
+            notify_appointment_reminder: true,
+            notify_sla_warning: true,
+            theme: 'system',
+            language: 'en',
+            date_format: 'MM/DD/YYYY',
+            time_format: '12h',
+            default_dashboard_view: 'grid',
+            tickets_per_page: 10,
+            profile_visible: true,
+            show_online_status: true,
+            daily_digest: false,
+            weekly_summary: true,
+            enable_sound: true,
+          });
+          toast({
+            title: "Note",
+            description: "Settings table not found. Using default settings. Please apply the database migration.",
+            variant: "default",
+          });
+        } else {
+          throw settingsError;
+        }
+      }
     } catch (error) {
       console.error("Error loading user data:", error);
       toast({
         title: "Error",
-        description: "Failed to load settings",
+        description: "Failed to load settings: " + error.message,
         variant: "destructive",
       });
     } finally {
@@ -99,6 +142,15 @@ const Settings = () => {
   };
 
   const handleSettingsUpdate = async () => {
+    if (migrationNeeded) {
+      toast({
+        title: "Migration Required",
+        description: "Please apply the database migration to save settings changes.",
+        variant: "destructive",
+      });
+      return;
+    }
+
     try {
       setSaving(true);
       await updateUserSettings(settings);
@@ -210,6 +262,18 @@ const Settings = () => {
     );
   }
 
+  if (!user) {
+    return (
+      <AppLayout>
+        <div className="flex items-center justify-center h-screen">
+          <div className="text-center">
+            <p className="text-muted-foreground">Please log in to access settings</p>
+          </div>
+        </div>
+      </AppLayout>
+    );
+  }
+
   return (
     <AppLayout>
       <div className="max-w-5xl mx-auto p-6">
@@ -219,6 +283,28 @@ const Settings = () => {
             Manage your account settings and preferences
           </p>
         </div>
+
+        {migrationNeeded && (
+          <div className="mb-6 rounded-lg border border-yellow-500/50 bg-yellow-50 dark:bg-yellow-950/20 p-4">
+            <div className="flex items-start gap-3">
+              <AlertTriangle className="h-5 w-5 text-yellow-600 dark:text-yellow-500 mt-0.5" />
+              <div className="flex-1">
+                <h3 className="font-semibold text-yellow-900 dark:text-yellow-100">
+                  Database Migration Required
+                </h3>
+                <p className="text-sm text-yellow-800 dark:text-yellow-200 mt-1">
+                  The settings table hasn't been created yet. Settings are currently using default values.
+                  To enable full functionality, please apply the database migration:
+                </p>
+                <ol className="text-sm text-yellow-800 dark:text-yellow-200 mt-2 ml-4 list-decimal space-y-1">
+                  <li>Go to your Supabase Dashboard SQL Editor</li>
+                  <li>Copy the contents of: <code className="bg-yellow-100 dark:bg-yellow-900 px-1 rounded">supabase/migrations/20260218000000_add_user_settings.sql</code></li>
+                  <li>Paste and run the SQL query</li>
+                </ol>
+              </div>
+            </div>
+          </div>
+        )}
 
         <Tabs defaultValue="profile" className="space-y-6">
           <TabsList className="grid w-full grid-cols-5">
