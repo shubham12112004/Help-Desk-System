@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
+import { useAuth } from "@/hooks/useAuth";
 import {
   MessageCircle,
   X,
@@ -16,9 +17,12 @@ import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { toast } from "sonner";
 
 const FloatingAIChatbot = () => {
   const navigate = useNavigate();
+  const location = useLocation();
+  const { user } = useAuth();
   const [isOpen, setIsOpen] = useState(false);
   const [messages, setMessages] = useState([
     {
@@ -77,12 +81,14 @@ const FloatingAIChatbot = () => {
     let response = "";
     switch (action) {
       case "report":
-        response = `Great! I can help you create a support ticket. To get started, please tell me:
+        response = user ? 
+          `Great! I can help you create a support ticket. To get started, please tell me:
 1. **Department**: Which service do you need? (${departments.map((d) => d.name).join(", ")})
 2. **Priority**: How urgent is this? (Low, Medium, High, Urgent)
 3. **Description**: What's the issue?
 
-Or would you like me to take you to the create ticket form?`;
+Or would you like me to take you to the create ticket form?` :
+          `To create a support ticket, you'll need to sign in first. Would you like me to take you to the login page? Once logged in, you can create tickets with all the details you need to provide.`;
         break;
       case "department":
         response = `Which department would you like help with?
@@ -185,9 +191,24 @@ Would you like me to help you create a ticket with this information, or do you h
   };
 
   const handleCreateTicket = () => {
+    if (!user) {
+      // User not logged in - redirect to login
+      toast.error("Please sign in first to create a ticket", {
+        description: "You'll be redirected to the login page",
+        duration: 3000,
+      });
+      navigate("/auth", { replace: true });
+      return;
+    }
     navigate("/create");
     setIsOpen(false);
   };
+
+  // Hide chatbot on auth/login pages (check AFTER all hooks)
+  const isAuthPage = location.pathname === "/auth" || location.pathname === "/";
+  if (isAuthPage) {
+    return null; // Don't render chatbot on auth pages
+  }
 
   if (!isOpen) {
     return (

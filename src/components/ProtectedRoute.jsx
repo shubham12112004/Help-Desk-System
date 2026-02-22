@@ -12,9 +12,10 @@ export function ProtectedRoute({ children }) {
   useEffect(() => {
     const checkSession = async () => {
       try {
-        const { data } = await supabase.auth.getSession();
+        // DISABLED: Not checking for existing sessions - manual login required
+        // const { data } = await supabase.auth.getSession();
         setSessionChecked(true);
-        console.log("ProtectedRoute session check:", data.session ? "authenticated" : "not authenticated");
+        console.log("ProtectedRoute session check: auto-login disabled, manual login required");
       } catch (error) {
         console.error("Session check error:", error);
         setSessionChecked(true); // Continue even if there's an error

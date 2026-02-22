@@ -27,40 +27,53 @@ export async function createTicket(ticketData, files = []) {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) throw new Error('User not authenticated');
 
-  const ticketNumber = await generateTicketNumber();
+  try {
+    const ticketNumber = await generateTicketNumber();
 
-  const { data: ticket, error } = await supabase
-    .from('tickets')
-    .insert({
-      ticket_number: ticketNumber,
-      title: ticketData.title,
-      description: ticketData.description,
-      category: ticketData.category,
-      priority: ticketData.priority || 'medium',
-      status: 'open',
-      created_by: user.id,
-      department: ticketData.department,
-    })
-    .select(`
-      *,
-      creator:created_by(id, full_name, email, role, avatar_url)
-    `)
-    .single();
+    const { data: ticket, error } = await supabase
+      .from('tickets')
+      .insert({
+        ticket_number: ticketNumber,
+        title: ticketData.title,
+        description: ticketData.description,
+        category: ticketData.category,
+        priority: ticketData.priority || 'medium',
+        status: 'open',
+        created_by: user.id,
+        department: ticketData.department,
+      })
+      .select(`
+        *,
+        creator:created_by(id, full_name, email, role, avatar_url)
+      `)
+      .single();
 
-  if (error) throw error;
-
-  // Upload attachments if any
-  if (files && files.length > 0) {
-    const { uploadMultipleFiles, saveAttachmentMetadata } = await import('./storage');
-    const uploadedFiles = await uploadMultipleFiles(files, ticket.id);
-    
-    // Save attachment metadata to database
-    for (const file of uploadedFiles) {
-      await saveAttachmentMetadata(ticket.id, file);
+    if (error) {
+      console.error('Ticket insert error:', error);
+      throw new Error(error.message || 'Failed to create ticket');
     }
-  }
 
-  return ticket;
+    // Upload attachments if any
+    if (files && files.length > 0) {
+      try {
+        const { uploadMultipleFiles, saveAttachmentMetadata } = await import('./storage');
+        const uploadedFiles = await uploadMultipleFiles(files, ticket.id);
+        
+        // Save attachment metadata to database
+        for (const file of uploadedFiles) {
+          await saveAttachmentMetadata(ticket.id, file);
+        }
+      } catch (fileError) {
+        console.error('File upload error:', fileError);
+        // Don't fail ticket creation if file upload fails
+      }
+    }
+
+    return ticket;
+  } catch (error) {
+    console.error('Error in createTicket:', error);
+    throw error;
+  }
 }
 
 /**

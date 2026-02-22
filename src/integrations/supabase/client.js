@@ -7,13 +7,19 @@ if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
   throw new Error("❌ Supabase ENV missing. Check .env file and restart server.");
 }
 
+// Session Configuration:
+// - persistSession: true = Allow OAuth callbacks to work properly
+// - autoRefreshToken: true = Keep session alive during single browser session
+// - storage: sessionStorage = Sessions cleared when browser/tab closes (not localStorage)
+// - Manual clearing in useAuth on normal app start (not OAuth callbacks)
+// Result: OAuth works, but sessions cleared when tab/browser closes or app restarts
 export const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
   auth: {
-    persistSession: true,
-    autoRefreshToken: true,
+    persistSession: true, // Enable for OAuth to work
+    autoRefreshToken: true, // Keep session alive during browser session
     detectSessionInUrl: true,
     flowType: "pkce",
-    storage: window.localStorage,
+    storage: window.sessionStorage, // Use sessionStorage (cleared on tab/browser close)
     storageKey: `sb-${new URL(SUPABASE_URL).hostname.split('.')[0]}-auth-token`,
   },
   global: {

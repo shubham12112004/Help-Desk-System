@@ -63,7 +63,12 @@ const Auth = () => {
   useEffect(() => {
     if (!authLoading && user) {
       console.log("User authenticated, redirecting to dashboard:", user.email);
-      navigate("/dashboard", { replace: true });
+      try {
+        navigate("/dashboard", { replace: true });
+      } catch (error) {
+        console.error("Dashboard navigation error from Auth:", error);
+        toast.error("Failed to navigate to dashboard. Please try again.");
+      }
     }
   }, [authLoading, user, navigate]);
 
@@ -115,21 +120,27 @@ const Auth = () => {
 
     // Check for OAuth success hash
     if (window.location.hash.includes("access_token")) {
-      console.log("OAuth callback detected, checking session...");
+      console.log("OAuth callback detected with access_token, checking session...");
       // Force session refresh after OAuth
       supabase.auth.getSession().then(({ data, error }) => {
         if (error) {
           console.error("Error getting session after OAuth:", error);
-          toast.error("Failed to complete sign-in. Please try again.");
+          toast.error("Failed to complete sign-in. Please try again.", { duration: 5000 });
         } else if (data.session) {
           console.log("OAuth session confirmed:", data.session.user.email);
-          toast.success(`Welcome, ${data.session.user.user_metadata?.full_name || data.session.user.email}!`);
+          console.log("User metadata:", data.session.user.user_metadata);
+          toast.success(`Welcome, ${data.session.user.user_metadata?.full_name || data.session.user.email}!`, { duration: 3000 });
+          // The main auth redirect useEffect will handle navigation to dashboard
+        } else {
+          console.warn("OAuth callback but no session found");
+          toast.error("Sign-in incomplete. Please try again.", { duration: 5000 });
         }
       });
     }
 
     const { data } = supabase.auth.onAuthStateChange((event, session) => {
       console.log("Auth state changed:", event, session?.user?.email);
+      console.log("Session data:", session ? "Session exists" : "No session");
       
       if (event === "PASSWORD_RECOVERY") {
         setShowForm(true);
@@ -139,7 +150,8 @@ const Auth = () => {
       
       // Log OAuth sign-in for debugging
       if (event === "SIGNED_IN" && session) {
-        console.log("SIGNED_IN event received:", session.user.email);
+        console.log("✅ SIGNED_IN event received:", session.user.email);
+        console.log("User role:", session.user.user_metadata?.role || "not set");
       }
     });
 
@@ -269,33 +281,51 @@ const Auth = () => {
 
   const signIn = async (emailAddress, passwordValue, retryCount = 0) => {
     try {
+      console.log(`Sign in attempt ${retryCount + 1} for email:`, emailAddress);
+
+      if (!emailAddress || !passwordValue) {
+        return { error: { message: 'Email and password are required' } };
+      }
+
       // 20 second timeout for sign in
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 20000);
 
-      const { error, data } = await supabase.auth.signInWithPassword({
-        email: emailAddress,
-        password: passwordValue,
-      });
+      let result;
+      try {
+        result = await supabase.auth.signInWithPassword({
+          email: emailAddress,
+          password: passwordValue,
+        });
+      } finally {
+        clearTimeout(timeoutId);
+      }
 
-      clearTimeout(timeoutId);
+      const { error, data } = result;
 
       if (error) {
-        console.error("Sign in error:", error.message);
+        console.error("Sign in error:", error.message, error.status);
+        
         if (error.message?.includes('504') || error.message?.includes('Gateway')) {
           if (retryCount < 1) {
-            console.log('Retrying sign in...');
+            console.log('Retrying sign in after 1.5s...');
             await new Promise(resolve => setTimeout(resolve, 1500));
             return signIn(emailAddress, passwordValue, retryCount + 1);
           }
-          return { error: { message: 'Server timeout. Your Supabase project may be paused or slow.' } };
+          return { error: { message: 'Server timeout. Your Supabase project may be paused. Please try again.' } };
         }
         return { error };
       }
 
+      if (!data.user) {
+        console.warn("Sign in returned no user data");
+        return { error: { message: 'Sign in failed: No user data returned' } };
+      }
+
+      console.log("Sign in successful for user:", data.user.email);
       return { error: null, data };
     } catch (error) {
-      console.error("Sign in exception:", error);
+      console.error("Sign in exception:", error.message, error.name);
       
       if (error.name === 'AbortError' || error.message?.includes('aborted')) {
         if (retryCount < 1) {
@@ -375,6 +405,19 @@ const Auth = () => {
     e.preventDefault();
     setLoading(true);
 
+    // Validate inputs before submission
+    if (!email.trim() || !password.trim()) {
+      toast.error("Please enter both email and password");
+      setLoading(false);
+      return;
+    }
+
+    if (!isSignUp && password.length < 6) {
+      toast.error("Password must be at least 6 characters");
+      setLoading(false);
+      return;
+    }
+
     try {
       if (isSignUp) {
         if (!fullName.trim()) {
@@ -440,19 +483,31 @@ const Auth = () => {
           }
         }
       } else {
+        console.log("Attempting sign in with email:", email);
         const { error } = await signIn(email, password);
         if (error) {
+          console.error("Sign in failed:", error);
           // Provide more specific error messages
           if (error.message.includes("Invalid login credentials")) {
-            toast.error("Invalid email or password. Please try again.");
+            toast.error("Invalid email or password. Please check and try again.", { duration: 5000 });
           } else if (error.message.includes("Email not confirmed")) {
-            toast.error("Please verify your email before signing in.");
+            toast.error("Please verify your email before signing in.", { duration: 5000 });
+          } else if (error.message.includes("Network error")) {
+            toast.error("Network error. Check your internet connection.", { duration: 5000 });
+          } else if (error.message.includes("timeout")) {
+            toast.error("Request timed out. Please try again.", { duration: 5000 });
           } else {
-            toast.error(error.message || "Failed to sign in. Please try again.");
+            toast.error(error.message || "Failed to sign in. Please try again.", { duration: 5000 });
           }
         } else {
+          console.log("Sign in successful, navigating to dashboard...");
           toast.success("Welcome back!");
-          navigate("/dashboard");
+          try {
+            navigate("/dashboard", { replace: false });
+          } catch (navError) {
+            console.error("Navigation error:", navError);
+            toast.error("Navigation failed. Please try refreshing the page.");
+          }
         }
       }
     } catch (error) {
@@ -787,6 +842,32 @@ const Auth = () => {
               <div className="mb-4">
                 <SupabaseStatus />
               </div>
+
+              {/* Session Debug Helper */}
+              {user && (
+                <div className="mb-4 p-3 rounded-lg bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800">
+                  <div className="flex items-center justify-between gap-2">
+                    <div className="flex-1">
+                      <p className="text-xs font-semibold text-yellow-800 dark:text-yellow-200">
+                        Already signed in as: {user.email}
+                      </p>
+                      <p className="text-xs text-yellow-600 dark:text-yellow-400 mt-0.5">
+                        Redirecting to dashboard...
+                      </p>
+                    </div>
+                    <button
+                      onClick={async () => {
+                        console.log("Manually signing out...");
+                        await supabase.auth.signOut();
+                        toast.info("Signed out. Please sign in again.");
+                      }}
+                      className="text-xs px-3 py-1 rounded bg-yellow-600 text-white hover:bg-yellow-700 font-medium"
+                    >
+                      Sign Out
+                    </button>
+                  </div>
+                </div>
+              )}
 
               {/* Form Tabs */}
               <div className="relative mb-8 rounded-full border-2 border-primary/20 bg-slate-100 dark:bg-slate-700 dark:border-slate-600 p-1.5 text-xs font-semibold text-slate-600 dark:text-slate-300 shadow-inner">

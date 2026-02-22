@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
+import { toast } from "sonner";
 import {
   ChevronDown,
   Hospital,
@@ -39,20 +40,27 @@ const Landing = () => {
   const [searchQuery, setSearchQuery] = useState("");
 
   const handleGetStarted = () => {
-    // If user is already logged in, go to dashboard
-    if (user) {
-      console.log("User already authenticated, navigating to dashboard");
-      navigate("/dashboard");
-    } else {
-      console.log("User not authenticated, navigating to sign-up/sign-in");
-      navigate("/auth");
+    try {
+      // Always redirect to auth page - it will handle dashboard redirect after login
+      console.log("Navigating to auth page for sign-up/sign-in");
+      navigate("/auth", { replace: false });
+    } catch (error) {
+      console.error("Navigation error in Get Started:", error);
+      toast.error("Failed to navigate. Please try again.");
     }
   };
 
   const handleSearch = (e) => {
     e.preventDefault();
-    if (searchQuery.trim()) {
-      navigate(`/auth?issue=${encodeURIComponent(searchQuery)}`);
+    try {
+      if (searchQuery.trim()) {
+        navigate(`/auth?issue=${encodeURIComponent(searchQuery)}`, { replace: false });
+      } else {
+        toast.error("Please enter a search query");
+      }
+    } catch (error) {
+      console.error("Search navigation error:", error);
+      toast.error("Failed to search. Please try again.");
     }
   };
 
@@ -278,7 +286,14 @@ const Landing = () => {
                 variant="outline"
                 size="lg"
                 className="gap-2 px-8"
-                onClick={() => document.getElementById("services")?.scrollIntoView({ behavior: "smooth" })}
+                onClick={() => {
+                  try {
+                    document.getElementById("services")?.scrollIntoView({ behavior: "smooth" });
+                  } catch (error) {
+                    console.error("Scroll error:", error);
+                    toast.error("Unable to scroll. Please try again.");
+                  }
+                }}
               >
                 Learn More <ChevronDown className="h-5 w-5" />
               </Button>

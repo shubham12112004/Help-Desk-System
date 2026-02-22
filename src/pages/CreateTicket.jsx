@@ -197,7 +197,24 @@ const CreateTicket = () => {
       navigate("/tickets");
     } catch (error) {
       console.error('Error creating ticket:', error);
-      toast.error(error.message || 'Failed to create ticket');
+      
+      // Provide detailed error messages
+      let errorMessage = 'Failed to create ticket';
+      
+      if (error?.message?.includes('not authenticated')) {
+        errorMessage = 'Your session has expired. Please sign in again.';
+      } else if (error?.message?.includes('permission') || error?.message?.includes('denied')) {
+        errorMessage = 'You do not have permission to create tickets. Please contact support.';
+      } else if (error?.message?.includes('network')) {
+        errorMessage = 'Network error. Please check your connection and try again.';
+      } else if (error?.message) {
+        errorMessage = error.message;
+      }
+      
+      toast.error(errorMessage, {
+        description: error?.message ? `Details: ${error.message}` : undefined,
+        duration: 5000
+      });
     }
   };
 
