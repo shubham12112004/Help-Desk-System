@@ -3,11 +3,11 @@ import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { Hospital, Mail, Lock, User, ArrowRight, Sparkles, LogIn, UserPlus, ChevronLeft, ChevronRight, Clock, Shield, Users, AlertTriangle, Link as LinkIcon } from "lucide-react";
-import { SpeechMicButton } from "@/components/SpeechMicButton";
+import { Hospital, Mail, Lock, User, ArrowRight, Sparkles, LogIn, UserPlus, ChevronLeft, ChevronRight, Clock, Shield, Users, AlertTriangle, Link as LinkIcon, Eye, EyeOff } from "lucide-react";
 import { SupabaseStatus } from "@/components/SupabaseStatus";
 import { EmailTimeoutHelp } from "@/components/EmailTimeoutHelp";
 import { ThemeToggle } from "@/components/ThemeToggle";
+import { SignupVoiceAssistant } from "@/components/SignupVoiceAssistant";
 import Footer from "@/components/Footer";
 
 const Auth = () => {
@@ -46,6 +46,9 @@ const Auth = () => {
   const [fullName, setFullName] = useState("");
   const [role, setRole] = useState("citizen");
   const [loading, setLoading] = useState(false);
+  const [showSignInPassword, setShowSignInPassword] = useState(false);
+  const [showSignUpPassword, setShowSignUpPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [retryAttempt, setRetryAttempt] = useState(0);
   const [showTimeoutHelp, setShowTimeoutHelp] = useState(false);
   const [slideIndex, setSlideIndex] = useState(0);
@@ -56,8 +59,31 @@ const Auth = () => {
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [resetLoading, setResetLoading] = useState(false);
+  const [showResetNewPassword, setShowResetNewPassword] = useState(false);
+  const [showResetConfirmPassword, setShowResetConfirmPassword] = useState(false);
   const { user, loading: authLoading } = useAuth();
   const navigate = useNavigate();
+
+  // Handler for voice assistant to update form fields
+  const handleVoiceFormUpdate = (field, value) => {
+    switch(field) {
+      case 'fullName':
+        setFullName(value);
+        break;
+      case 'email':
+        setEmail(value);
+        break;
+      case 'password':
+        setPassword(value);
+        setAuthMethod('password'); // Auto-select password method
+        break;
+      case 'role':
+        setRole(value);
+        break;
+      default:
+        break;
+    }
+  };
 
   // Main authentication redirect - handles all sign-in methods including OAuth
   useEffect(() => {
@@ -422,6 +448,13 @@ const Auth = () => {
       if (isSignUp) {
         if (!fullName.trim()) {
           toast.error("Please enter your full name");
+          setLoading(false);
+          return;
+        }
+
+        // Validate password match for sign-up
+        if (authMethod === "password" && password !== confirmPassword) {
+          toast.error("Passwords do not match. Please try again.");
           setLoading(false);
           return;
         }
@@ -921,22 +954,42 @@ const Auth = () => {
                           Enter a new password to regain access.
                         </p>
                         <div className="mt-4 space-y-3">
-                          <input
-                            type="password"
-                            placeholder="New password"
-                            value={newPassword}
-                            onChange={(e) => setNewPassword(e.target.value)}
-                            className="w-full rounded-xl border-2 border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 px-4 py-2.5 text-sm text-foreground placeholder:text-slate-400 dark:placeholder:text-slate-500 font-medium shadow-sm focus:outline-none focus:ring-2 focus:ring-primary/60 focus:border-primary transition-all"
-                            minLength={6}
-                          />
-                          <input
-                            type="password"
-                            placeholder="Confirm new password"
-                            value={confirmPassword}
-                            onChange={(e) => setConfirmPassword(e.target.value)}
-                            className="w-full rounded-xl border-2 border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 px-4 py-2.5 text-sm text-foreground placeholder:text-slate-400 dark:placeholder:text-slate-500 font-medium shadow-sm focus:outline-none focus:ring-2 focus:ring-primary/60 focus:border-primary transition-all"
-                            minLength={6}
-                          />
+                          <div className="relative group">
+                            <input
+                              type={showResetNewPassword ? "text" : "password"}
+                              placeholder="New password"
+                              value={newPassword}
+                              onChange={(e) => setNewPassword(e.target.value)}
+                              className="w-full rounded-xl border-2 border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 px-4 pr-10 py-2.5 text-sm text-foreground placeholder:text-slate-400 dark:placeholder:text-slate-500 font-medium shadow-sm focus:outline-none focus:ring-2 focus:ring-primary/60 focus:border-primary transition-all"
+                              minLength={6}
+                            />
+                            <button
+                              type="button"
+                              onClick={() => setShowResetNewPassword(!showResetNewPassword)}
+                              className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+                            >
+                              {showResetNewPassword ? <Eye className="h-4 w-4" /> : <EyeOff className="h-4 w-4" />}
+                            </button>
+                          </div>
+
+                          <div className="relative group">
+                            <input
+                              type={showResetConfirmPassword ? "text" : "password"}
+                              placeholder="Confirm new password"
+                              value={confirmPassword}
+                              onChange={(e) => setConfirmPassword(e.target.value)}
+                              className="w-full rounded-xl border-2 border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 px-4 pr-10 py-2.5 text-sm text-foreground placeholder:text-slate-400 dark:placeholder:text-slate-500 font-medium shadow-sm focus:outline-none focus:ring-2 focus:ring-primary/60 focus:border-primary transition-all"
+                              minLength={6}
+                            />
+                            <button
+                              type="button"
+                              onClick={() => setShowResetConfirmPassword(!showResetConfirmPassword)}
+                              className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+                            >
+                              {showResetConfirmPassword ? <Eye className="h-4 w-4" /> : <EyeOff className="h-4 w-4" />}
+                            </button>
+                          </div>
+
                           <button
                             type="button"
                             onClick={handlePasswordUpdate}
@@ -951,7 +1004,6 @@ const Auth = () => {
 
                     <form onSubmit={handleSubmit} className="space-y-4" autoComplete="off">
                       <div className="group relative">
-                        <Mail className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-primary transition-colors group-focus-within:text-primary" />
                         <input
                           type="email"
                           placeholder="Email address"
@@ -963,20 +1015,28 @@ const Auth = () => {
                           autoCorrect="off"
                           spellCheck={false}
                         />
+                        <Mail className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-primary transition-colors group-focus-within:text-primary z-10 pointer-events-none" />
                       </div>
 
                       <div className="group relative">
-                        <Lock className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-primary transition-colors group-focus-within:text-primary" />
                         <input
-                          type="password"
+                          type={showSignInPassword ? "text" : "password"}
                           placeholder="Password"
                           value={password}
                           onChange={(e) => setPassword(e.target.value)}
-                          className="w-full rounded-xl border-2 border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 pl-12 pr-4 py-3 text-sm text-foreground placeholder:text-slate-400 dark:placeholder:text-slate-500 font-medium shadow-sm focus:outline-none focus:ring-2 focus:ring-primary/60 focus:border-primary transition-all hover:border-slate-400 dark:hover:border-slate-500"
+                          className="w-full rounded-xl border-2 border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 pl-12 pr-10 py-3 text-sm text-foreground placeholder:text-slate-400 dark:placeholder:text-slate-500 font-medium shadow-sm focus:outline-none focus:ring-2 focus:ring-primary/60 focus:border-primary transition-all hover:border-slate-400 dark:hover:border-slate-500"
                           minLength={6}
                           required
                           autoComplete="off"
                         />
+                        <Lock className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-primary transition-colors group-focus-within:text-primary z-10 pointer-events-none" />
+                        <button
+                          type="button"
+                          onClick={() => setShowSignInPassword(!showSignInPassword)}
+                          className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-primary transition-colors"
+                        >
+                          {showSignInPassword ? <Eye className="h-5 w-5" /> : <EyeOff className="h-5 w-5" />}
+                        </button>
                       </div>
 
                       <div className="flex items-center justify-between text-xs">
@@ -1139,29 +1199,19 @@ const Auth = () => {
 
                     <form onSubmit={handleSubmit} className="space-y-4">
                           <div className="group relative">
-                            <User className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-primary transition-colors group-focus-within:text-primary" />
                             <input
                               type="text"
                               placeholder="Full Name"
                               value={fullName}
                               onChange={(e) => setFullName(e.target.value)}
-                              className="w-full rounded-xl border-2 border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 pl-12 pr-12 py-3 text-sm text-foreground placeholder:text-slate-400 dark:placeholder:text-slate-500 font-medium shadow-sm focus:outline-none focus:ring-2 focus:ring-primary/60 focus:border-primary transition-all hover:border-slate-400 dark:hover:border-slate-500"
+                              className="w-full rounded-xl border-2 border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 pl-12 pr-4 py-3 text-sm text-foreground placeholder:text-slate-400 dark:placeholder:text-slate-500 font-medium shadow-sm focus:outline-none focus:ring-2 focus:ring-primary/60 focus:border-primary transition-all hover:border-slate-400 dark:hover:border-slate-500"
                               required
                               autoComplete="name"
                             />
-                            <SpeechMicButton
-                              ariaLabel="Dictate full name"
-                              onTranscript={(transcript) =>
-                                setFullName((current) =>
-                                  appendTranscript(current, transcript)
-                                )
-                              }
-                              className="absolute right-3 top-1/2 -translate-y-1/2"
-                            />
+                            <User className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-primary transition-colors group-focus-within:text-primary z-10 pointer-events-none" />
                           </div>
 
                           <div className="group relative">
-                            <Mail className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-primary transition-colors group-focus-within:text-primary" />
                             <input
                               type="email"
                               placeholder="Email address"
@@ -1171,6 +1221,7 @@ const Auth = () => {
                               required
                               autoComplete="email"
                             />
+                            <Mail className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-primary transition-colors group-focus-within:text-primary z-10 pointer-events-none" />
                           </div>
 
                           <div className="space-y-3 pt-2">
@@ -1207,19 +1258,49 @@ const Auth = () => {
                           </div>
 
                           {authMethod === "password" && (
-                            <div className="group relative">
-                              <Lock className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-primary transition-colors group-focus-within:text-primary" />
-                              <input
-                                type="password"
-                                placeholder="Password"
-                                value={password}
-                                onChange={(e) => setPassword(e.target.value)}
-                                className="w-full rounded-xl border-2 border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 pl-12 pr-4 py-3 text-sm text-foreground placeholder:text-slate-400 dark:placeholder:text-slate-500 font-medium shadow-sm focus:outline-none focus:ring-2 focus:ring-primary/60 focus:border-primary transition-all hover:border-slate-400 dark:hover:border-slate-500"
-                                minLength={6}
-                                required
-                                autoComplete="new-password"
-                              />
-                            </div>
+                            <>
+                              <div className="group relative">
+                                <input
+                                  type={showSignUpPassword ? "text" : "password"}
+                                  placeholder="Password"
+                                  value={password}
+                                  onChange={(e) => setPassword(e.target.value)}
+                                  className="w-full rounded-xl border-2 border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 pl-12 pr-10 py-3 text-sm text-foreground placeholder:text-slate-400 dark:placeholder:text-slate-500 font-medium shadow-sm focus:outline-none focus:ring-2 focus:ring-primary/60 focus:border-primary transition-all hover:border-slate-400 dark:hover:border-slate-500"
+                                  minLength={6}
+                                  required
+                                  autoComplete="new-password"
+                                />
+                                <Lock className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-primary transition-colors group-focus-within:text-primary z-10 pointer-events-none" />
+                                <button
+                                  type="button"
+                                  onClick={() => setShowSignUpPassword(!showSignUpPassword)}
+                                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-primary transition-colors"
+                                >
+                                  {showSignUpPassword ? <Eye className="h-5 w-5" /> : <EyeOff className="h-5 w-5" />}
+                                </button>
+                              </div>
+
+                              <div className="group relative">
+                                <input
+                                  type={showConfirmPassword ? "text" : "password"}
+                                  placeholder="Confirm Password"
+                                  value={confirmPassword}
+                                  onChange={(e) => setConfirmPassword(e.target.value)}
+                                  className="w-full rounded-xl border-2 border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 pl-12 pr-10 py-3 text-sm text-foreground placeholder:text-slate-400 dark:placeholder:text-slate-500 font-medium shadow-sm focus:outline-none focus:ring-2 focus:ring-primary/60 focus:border-primary transition-all hover:border-slate-400 dark:hover:border-slate-500"
+                                  minLength={6}
+                                  required
+                                  autoComplete="new-password"
+                                />
+                                <Lock className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-primary transition-colors group-focus-within:text-primary z-10 pointer-events-none" />
+                                <button
+                                  type="button"
+                                  onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-primary transition-colors"
+                                >
+                                  {showConfirmPassword ? <Eye className="h-5 w-5" /> : <EyeOff className="h-5 w-5" />}
+                                </button>
+                              </div>
+                            </>
                           )}
 
                           <div className="space-y-3 pt-2">
@@ -1330,6 +1411,9 @@ const Auth = () => {
           </div>
         )}
       </div>
+      
+      {/* Voice Assistant - Only show on signup */}
+      {isSignUp && <SignupVoiceAssistant onFormDataUpdate={handleVoiceFormUpdate} />}
       
       {/* Footer */}
       <Footer />

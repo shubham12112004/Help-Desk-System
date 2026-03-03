@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { useNavigate } from "react-router-dom";
+import { supabase } from "@/integrations/supabase/client";
 import {
   Search,
   MoreVertical,
@@ -25,8 +26,11 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ThemeToggle } from "@/components/ThemeToggle";
+import { LanguageSelector } from "@/components/LanguageSelector";
+import { ColorThemeSelector } from "@/components/ColorThemeSelector";
 import { NotificationsDropdown } from "@/components/NotificationsDropdown";
 import { cn } from "@/lib/utils";
+import { useTranslation } from "@/hooks/useTranslation";
 import {
   Dialog,
   DialogContent,
@@ -41,6 +45,27 @@ const ProfessionalHeader = ({ onSearch }) => {
   const [searchOpen, setSearchOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [showSearchDialog, setShowSearchDialog] = useState(false);
+  const [profile, setProfile] = useState(null);
+  const { t } = useTranslation();
+
+  // Load user profile from database
+  useEffect(() => {
+    const loadProfile = async () => {
+      if (user) {
+        const { data } = await supabase
+          .from('profiles')
+          .select('*')
+          .eq('id', user.id)
+          .single();
+        
+        if (data) {
+          setProfile(data);
+        }
+      }
+    };
+
+    loadProfile();
+  }, [user]);
 
   // Role colors and labels
   const roleConfig = {
@@ -51,7 +76,8 @@ const ProfessionalHeader = ({ onSearch }) => {
     citizen: { color: "secondary", label: "Patient" },
   };
 
-  const userRole = user?.user_metadata?.role || "citizen";
+  // Use profile role from database only (avoid stale metadata)
+  const userRole = profile?.role ?? "citizen";
   const roleInfo = roleConfig[userRole] || roleConfig.citizen;
 
   const handleLogout = async () => {
@@ -60,7 +86,7 @@ const ProfessionalHeader = ({ onSearch }) => {
   };
 
   const handleSearch = (e) => {
-    e.preventDefault();
+    if (e) e.preventDefault();
     if (searchQuery.trim()) {
       navigate(`/tickets?search=${encodeURIComponent(searchQuery)}`);
       setShowSearchDialog(false);
@@ -68,21 +94,28 @@ const ProfessionalHeader = ({ onSearch }) => {
     }
   };
 
+  const handleKeyDown = (e) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      handleSearch();
+    }
+  };
+
   const quickActions = [
     {
-      label: "Create Ticket",
+      label: t("header.createTicket"),
       icon: Plus,
       action: () => navigate("/create"),
       color: "text-emerald-500",
     },
     {
-      label: "View Tickets",
+      label: t("header.viewTickets"),
       icon: LifeBuoy,
       action: () => navigate("/tickets"),
       color: "text-blue-500",
     },
     {
-      label: "Chat Support",
+      label: t("header.chatSupport"),
       icon: MessageSquare,
       action: () => setShowSearchDialog(true),
       color: "text-purple-500",
@@ -114,11 +147,11 @@ const ProfessionalHeader = ({ onSearch }) => {
             <div className="relative hidden sm:block">
               <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
               <Input
-                placeholder="Search tickets, departments, staff..."
+                placeholder={t("header.search")}
                 className="w-full bg-muted/50 pl-9 text-sm"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                onKeyPress={handleSearch}
+                onKeyDown={handleKeyDown}
               />
             </div>
             {/* Mobile search button */}
@@ -147,7 +180,7 @@ const ProfessionalHeader = ({ onSearch }) => {
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="w-56">
                 <DropdownMenuLabel className="font-semibold">
-                  Quick Actions
+                  {t("header.quickActions")}
                 </DropdownMenuLabel>
                 <DropdownMenuSeparator />
                 <DropdownMenuGroup>
@@ -170,6 +203,12 @@ const ProfessionalHeader = ({ onSearch }) => {
 
             {/* Notifications */}
             <NotificationsDropdown />
+
+            {/* Language Selector */}
+            <LanguageSelector />
+
+            {/* Color Theme Selector */}
+            <ColorThemeSelector />
 
             {/* Theme Toggle */}
             <div className="hidden sm:block">
@@ -257,7 +296,22 @@ const ProfessionalHeader = ({ onSearch }) => {
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
-                <DropdownMenuLabel>Quick Actions</DropdownMenuLabel>
+                <DropdownMenuLabel>Customization</DropdownMenuLabel>
+                <DropdownMenuSeparator />
+                
+                {/* Language Selector - Mobile */}
+                <div className="px-2 py-2">
+                  <LanguageSelector />
+                </div>
+                <DropdownMenuSeparator />
+                
+                {/* Color Theme Selector - Mobile */}
+                <div className="px-2 py-2">
+                  <ColorThemeSelector />
+                </div>
+                <DropdownMenuSeparator />
+                
+                <DropdownMenuLabel>{t("header.quickActions")}</DropdownMenuLabel>
                 <DropdownMenuSeparator />
                 {quickActions.map((action) => {
                   const Icon = action.icon;
@@ -282,24 +336,25 @@ const ProfessionalHeader = ({ onSearch }) => {
       <Dialog open={showSearchDialog} onOpenChange={setShowSearchDialog}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
-            <DialogTitle>Search</DialogTitle>
+            <DialogTitle>{t("header.searchTitle")}</DialogTitle>
             <DialogDescription>
-              Search for tickets, departments, or staff members
+              {t("header.searchDescription")}
             </DialogDescription>
           </DialogHeader>
           <form onSubmit={handleSearch} className="space-y-4">
             <div className="relative">
               <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
               <Input
-                placeholder="Enter search query..."
+                placeholder={t("header.search")}
                 className="pl-9"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
+                onKeyDown={handleKeyDown}
                 autoFocus
               />
             </div>
             <Button type="submit" className="w-full">
-              Search
+              {t("common.search")}
             </Button>
           </form>
         </DialogContent>

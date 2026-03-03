@@ -6,7 +6,7 @@ export function PatientProfileCard({ user, profile }) {
   const patientData = {
     name: profile?.full_name || user?.user_metadata?.full_name || user?.email,
     patientId: profile?.patient_id || `P${user?.id?.slice(0, 8)}`,
-    role: user?.user_metadata?.role || 'citizen',
+    role: profile?.role || user?.user_metadata?.role || 'citizen',
     blood_group: profile?.blood_group || 'Not Set',
     age: profile?.age || 'Not Set',
     contact: profile?.contact || user?.phone || 'Not Set',

@@ -18,6 +18,13 @@ if (fs.existsSync(envPath)) {
 
 const authRoutes = require("./routes/authRoutes");
 const settingsRoutes = require("./routes/settingsRoutes");
+const profileRoutes = require("./routes/profileRoutes");
+const ticketRoutes = require("./routes/ticketRoutes");
+const notificationRoutes = require("./routes/notificationRoutes");
+const ambulanceRoutes = require("./routes/ambulanceRoutes");
+const medicineRoutes = require("./routes/medicineRoutes");
+const appointmentRoutes = require("./routes/appointmentRoutes");
+const hospitalRoutes = require("./routes/hospitalRoutes");
 
 const app = express();
 
@@ -31,6 +38,13 @@ app.use(express.json());
 // Routes
 app.use("/api/auth", authRoutes);
 app.use("/api/user", settingsRoutes);
+app.use("/api/profiles", profileRoutes);
+app.use("/api/tickets", ticketRoutes);
+app.use("/api/notifications", notificationRoutes);
+app.use("/api/ambulance", ambulanceRoutes);
+app.use("/api/medicine", medicineRoutes);
+app.use("/api/appointments", appointmentRoutes);
+app.use("/api/hospital", hospitalRoutes);
 
 // Test route
 app.get("/", (req, res) => {

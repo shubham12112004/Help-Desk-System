@@ -107,12 +107,27 @@ export function TokenQueueSystem() {
       return;
     }
 
+    if (!user || !user.id) {
+      toast.error('Please login to request a token');
+      return;
+    }
+
     setIsRequesting(true);
     try {
       const { data, error } = await createToken(user.id, selectedDepartment);
       
       if (error) {
-        toast.error('Failed to create token');
+        console.error('Token creation error:', error);
+        const errorMsg = error.message || error.hint || 'Failed to create token';
+        toast.error(`Token Error: ${errorMsg}`, {
+          description: error.details || 'Please check your permissions and try again',
+          duration: 5000
+        });
+        return;
+      }
+
+      if (!data) {
+        toast.error('No token data returned');
         return;
       }
 
@@ -121,7 +136,10 @@ export function TokenQueueSystem() {
       loadTokens();
     } catch (error) {
       console.error('Token creation error:', error);
-      toast.error('Failed to create token');
+      toast.error(`Error: ${error.message || 'Failed to create token'}`, {
+        description: 'Please refresh and try again',
+        duration: 5000
+      });
     } finally {
       setIsRequesting(false);
     }

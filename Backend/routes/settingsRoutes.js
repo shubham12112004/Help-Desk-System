@@ -1,4 +1,5 @@
 const express = require("express");
+const requireSupabaseAuth = require("../middleware/requireSupabaseAuth");
 const router = express.Router();
 const {
   getUserSettings,
@@ -8,6 +9,8 @@ const {
   exportUserData,
   deactivateAccount,
 } = require("../controllers/settingsController");
+
+router.use(requireSupabaseAuth);
 
 // Settings routes
 router.get("/settings", getUserSettings);

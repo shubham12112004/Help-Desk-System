@@ -7,6 +7,7 @@ import {
   Monitor,
   Shield,
   Eye,
+  EyeOff,
   Download,
   Trash2,
   Save,
@@ -14,7 +15,7 @@ import {
   AlertTriangle,
 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
-import { supabase } from "@/integrations/supabase/client";
+import * as profilesService from "@/services/profiles";
 import {
   getUserSettings,
   updateUserSettings,
@@ -44,6 +45,8 @@ const Settings = () => {
     newPassword: "",
     confirmPassword: "",
   });
+  const [showNewPassword, setShowNewPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
   useEffect(() => {
     if (user) {
@@ -61,56 +64,15 @@ const Settings = () => {
     }
 
     setLoading(true);
-    console.log("Loading profile for user ID:", user.id);
     
-    // Load profile with common fields that exist in both schemas
-    let profileData = null;
-    
-    // Try user_id first (old schema)
     try {
-      const result = await supabase
-        .from("profiles")
-        .select("id, user_id, email, full_name, phone, avatar_url, department, address, emergency_contact")
-        .eq("user_id", user.id)
-        .limit(1);
-      
-      if (result.data && result.data.length > 0) {
-        profileData = result.data[0];
-        console.log("Profile loaded via user_id (old schema)");
-      } else if (result.error) {
-        console.log("Old schema query error:", result.error.message);
-      }
-    } catch (err) {
-      console.log("Old schema query failed:", err.message);
-    }
-
-    // If user_id doesn't work or returned no data, try id (new schema)
-    if (!profileData) {
-      try {
-        const result = await supabase
-          .from("profiles")
-          .select("id, email, full_name, role, phone, avatar_url, department, address, emergency_contact")
-          .eq("id", user.id)
-          .limit(1);
-        
-        if (result.data && result.data.length > 0) {
-          profileData = result.data[0];
-          console.log("Profile loaded via id (new schema)");
-        } else if (result.error) {
-          console.log("New schema query error:", result.error.message);
-        }
-      } catch (err) {
-        console.log("New schema query failed:", err.message);
-      }
-    }
-
-    // Set profile data or create empty profile with user's email
-    if (profileData) {
-      console.log("Profile loaded successfully:", profileData);
+      // Load profile using profiles service
+      const profileData = await profilesService.getMyProfile();
       setProfile(profileData);
-    } else {
-      console.warn("No profile found, using default profile");
-      // Create a basic profile object with user email
+      console.log("Profile loaded successfully");
+    } catch (profileError) {
+      console.warn("Failed to load profile:", profileError.message);
+      // Use default profile with user email
       setProfile({
         email: user.email,
         full_name: "",
@@ -659,27 +621,62 @@ const Settings = () => {
               </CardHeader>
               <CardContent className="space-y-6">
                 <div className="space-y-4">
-                  <h3 className="font-semibold">Change Password</h3>
-                  <div className="space-y-2">
-                    <Label htmlFor="newPassword">New Password</Label>
-                    <Input
-                      id="newPassword"
-                      type="password"
-                      value={passwordData.newPassword}
-                      onChange={(e) => setPasswordData({ ...passwordData, newPassword: e.target.value })}
-                    />
+                  <h3 className="font-semibold flex items-center gap-2">
+                    <Shield className="h-4 w-4" />
+                    Set Password
+                  </h3>
+                  <p className="text-sm text-muted-foreground">
+                    {user?.app_metadata?.provider === 'google' 
+                      ? "You signed up with Google. Set a password to login with email & password." 
+                      : "Change your password to keep your account secure."}
+                  </p>
+                  
+                  <div className="space-y-3">
+                    <div className="space-y-2">
+                      <Label htmlFor="newPassword">New Password</Label>
+                      <div className="relative group">
+                        <Input
+                          id="newPassword"
+                          type={showNewPassword ? "text" : "password"}
+                          placeholder="Enter new password"
+                          value={passwordData.newPassword}
+                          onChange={(e) => setPasswordData({ ...passwordData, newPassword: e.target.value })}
+                          className="pr-10"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setShowNewPassword(!showNewPassword)}
+                          className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+                        >
+                          {showNewPassword ? <Eye className="h-4 w-4" /> : <EyeOff className="h-4 w-4" />}
+                        </button>
+                      </div>
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="confirmPassword">Confirm Password</Label>
+                      <div className="relative group">
+                        <Input
+                          id="confirmPassword"
+                          type={showConfirmPassword ? "text" : "password"}
+                          placeholder="Confirm new password"
+                          value={passwordData.confirmPassword}
+                          onChange={(e) => setPasswordData({ ...passwordData, confirmPassword: e.target.value })}
+                          className="pr-10"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                          className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+                        >
+                          {showConfirmPassword ? <Eye className="h-4 w-4" /> : <EyeOff className="h-4 w-4" />}
+                        </button>
+                      </div>
+                    </div>
                   </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="confirmPassword">Confirm Password</Label>
-                    <Input
-                      id="confirmPassword"
-                      type="password"
-                      value={passwordData.confirmPassword}
-                      onChange={(e) => setPasswordData({ ...passwordData, confirmPassword: e.target.value })}
-                    />
-                  </div>
-                  <Button onClick={handlePasswordUpdate} disabled={saving}>
-                    {saving ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Save className="h-4 w-4 mr-2" />}
+
+                  <Button onClick={handlePasswordUpdate} disabled={saving} className="gap-2">
+                    {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
                     Update Password
                   </Button>
                 </div>

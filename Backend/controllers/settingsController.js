@@ -1,68 +1,73 @@
-const { createClient } = require('@supabase/supabase-js');
+const UserSettings = require("../models/UserSettings");
+const Profile = require("../models/Profile");
+const Ticket = require("../models/Ticket");
+const TicketComment = require("../models/TicketComment");
 
-// Initialize Supabase client
-const supabaseUrl = process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL;
-const supabaseKey = process.env.VITE_SUPABASE_ANON_KEY || process.env.SUPABASE_ANON_KEY;
-
-if (!supabaseUrl || !supabaseKey) {
-  console.error('❌ Missing Supabase credentials in environment variables');
-  console.error('Please add to Backend/.env:');
-  console.error('  VITE_SUPABASE_URL=your-supabase-url');
-  console.error('  VITE_SUPABASE_ANON_KEY=your-supabase-anon-key');
-  throw new Error('Supabase credentials not configured. Check Backend/.env file.');
+function formatProfile(profile) {
+  const data = profile.toObject();
+  return {
+    id: data.userId,
+    user_id: data.userId,
+    email: data.email,
+    full_name: data.full_name,
+    role: data.role,
+    phone: data.phone,
+    avatar_url: data.avatar_url,
+    department: data.department,
+    address: data.address,
+    emergency_contact: data.emergency_contact,
+    is_active: data.is_active,
+    created_at: data.createdAt,
+    updated_at: data.updatedAt,
+  };
 }
 
-const supabase = createClient(supabaseUrl, supabaseKey);
-console.log('✅ Supabase client initialized successfully');
+function formatSettings(settings) {
+  const data = settings.toObject();
+  return {
+    id: data._id,
+    user_id: data.userId,
+    email_notifications: data.email_notifications,
+    push_notifications: data.push_notifications,
+    sms_notifications: data.sms_notifications,
+    notify_ticket_created: data.notify_ticket_created,
+    notify_ticket_assigned: data.notify_ticket_assigned,
+    notify_ticket_updated: data.notify_ticket_updated,
+    notify_ticket_commented: data.notify_ticket_commented,
+    notify_ticket_resolved: data.notify_ticket_resolved,
+    notify_appointment_reminder: data.notify_appointment_reminder,
+    notify_sla_warning: data.notify_sla_warning,
+    daily_digest: data.daily_digest,
+    weekly_summary: data.weekly_summary,
+    theme: data.theme,
+    language: data.language,
+    date_format: data.date_format,
+    time_format: data.time_format,
+    default_dashboard_view: data.default_dashboard_view,
+    tickets_per_page: data.tickets_per_page,
+    profile_visible: data.profile_visible,
+    show_online_status: data.show_online_status,
+    enable_sound: data.enable_sound,
+    created_at: data.createdAt,
+    updated_at: data.updatedAt,
+  };
+}
 
 /**
  * Get user settings
  */
 exports.getUserSettings = async (req, res) => {
   try {
-    const authHeader = req.headers.authorization;
-    if (!authHeader) {
-      return res.status(401).json({ message: 'Authorization header missing' });
+    let settings = await UserSettings.findOne({ userId: req.user.id });
+
+    if (!settings) {
+      settings = await UserSettings.create({ userId: req.user.id });
     }
 
-    const token = authHeader.replace('Bearer ', '');
-    
-    // Verify user with token
-    const { data: { user }, error: userError } = await supabase.auth.getUser(token);
-    if (userError || !user) {
-      return res.status(401).json({ message: 'Invalid or expired token' });
-    }
-
-    // Get user settings
-    let { data: settings, error } = await supabase
-      .from('user_settings')
-      .select('*')
-      .eq('user_id', user.id)
-      .single();
-
-    // If no settings exist, create default settings
-    if (error && error.code === 'PGRST116') {
-      const { data: newSettings, error: createError } = await supabase
-        .from('user_settings')
-        .insert([{ user_id: user.id }])
-        .select()
-        .single();
-
-      if (createError) {
-        return res.status(500).json({ message: 'Error creating settings', error: createError.message });
-      }
-      
-      return res.status(200).json({ settings: newSettings });
-    }
-
-    if (error) {
-      return res.status(500).json({ message: 'Error fetching settings', error: error.message });
-    }
-
-    res.status(200).json({ settings });
+    res.status(200).json({ settings: formatSettings(settings) });
   } catch (error) {
-    console.error('Error in getUserSettings:', error);
-    res.status(500).json({ message: 'Internal server error', error: error.message });
+    console.error("Error in getUserSettings:", error);
+    res.status(500).json({ message: "Internal server error" });
   }
 };
 
@@ -71,46 +76,25 @@ exports.getUserSettings = async (req, res) => {
  */
 exports.updateUserSettings = async (req, res) => {
   try {
-    const authHeader = req.headers.authorization;
-    if (!authHeader) {
-      return res.status(401).json({ message: 'Authorization header missing' });
-    }
+    const updateData = { ...req.body };
+    delete updateData.id;
+    delete updateData.user_id;
+    delete updateData.created_at;
+    delete updateData.updated_at;
 
-    const token = authHeader.replace('Bearer ', '');
-    
-    // Verify user with token
-    const { data: { user }, error: userError } = await supabase.auth.getUser(token);
-    if (userError || !user) {
-      return res.status(401).json({ message: 'Invalid or expired token' });
-    }
+    const settings = await UserSettings.findOneAndUpdate(
+      { userId: req.user.id },
+      { $set: updateData },
+      { new: true, upsert: true }
+    );
 
-    const settingsUpdate = req.body;
-
-    // Remove read-only fields
-    delete settingsUpdate.id;
-    delete settingsUpdate.user_id;
-    delete settingsUpdate.created_at;
-    delete settingsUpdate.updated_at;
-
-    // Update settings
-    const { data: updatedSettings, error } = await supabase
-      .from('user_settings')
-      .update({ ...settingsUpdate, updated_at: new Date().toISOString() })
-      .eq('user_id', user.id)
-      .select()
-      .single();
-
-    if (error) {
-      return res.status(500).json({ message: 'Error updating settings', error: error.message });
-    }
-
-    res.status(200).json({ 
-      message: 'Settings updated successfully',
-      settings: updatedSettings 
+    res.status(200).json({
+      message: "Settings updated successfully",
+      settings: formatSettings(settings),
     });
   } catch (error) {
-    console.error('Error in updateUserSettings:', error);
-    res.status(500).json({ message: 'Internal server error', error: error.message });
+    console.error("Error in updateUserSettings:", error);
+    res.status(500).json({ message: "Internal server error" });
   }
 };
 
@@ -119,34 +103,15 @@ exports.updateUserSettings = async (req, res) => {
  */
 exports.getUserProfile = async (req, res) => {
   try {
-    const authHeader = req.headers.authorization;
-    if (!authHeader) {
-      return res.status(401).json({ message: 'Authorization header missing' });
+    const profile = await Profile.findOne({ userId: req.user.id });
+    if (!profile) {
+      return res.status(404).json({ message: "Profile not found" });
     }
 
-    const token = authHeader.replace('Bearer ', '');
-    
-    // Verify user with token
-    const { data: { user }, error: userError } = await supabase.auth.getUser(token);
-    if (userError || !user) {
-      return res.status(401).json({ message: 'Invalid or expired token' });
-    }
-
-    // Get user profile
-    const { data: profile, error } = await supabase
-      .from('profiles')
-      .select('*')
-      .eq('id', user.id)
-      .single();
-
-    if (error) {
-      return res.status(500).json({ message: 'Error fetching profile', error: error.message });
-    }
-
-    res.status(200).json({ profile });
+    res.status(200).json({ profile: formatProfile(profile) });
   } catch (error) {
-    console.error('Error in getUserProfile:', error);
-    res.status(500).json({ message: 'Internal server error', error: error.message });
+    console.error("Error in getUserProfile:", error);
+    res.status(500).json({ message: "Internal server error" });
   }
 };
 
@@ -155,47 +120,30 @@ exports.getUserProfile = async (req, res) => {
  */
 exports.updateUserProfile = async (req, res) => {
   try {
-    const authHeader = req.headers.authorization;
-    if (!authHeader) {
-      return res.status(401).json({ message: 'Authorization header missing' });
+    const updateData = { ...req.body };
+    delete updateData.id;
+    delete updateData.created_at;
+    delete updateData.updated_at;
+    delete updateData.email;
+    delete updateData.role;
+
+    const profile = await Profile.findOneAndUpdate(
+      { userId: req.user.id },
+      { $set: updateData },
+      { new: true }
+    );
+
+    if (!profile) {
+      return res.status(404).json({ message: "Profile not found" });
     }
 
-    const token = authHeader.replace('Bearer ', '');
-    
-    // Verify user with token
-    const { data: { user }, error: userError } = await supabase.auth.getUser(token);
-    if (userError || !user) {
-      return res.status(401).json({ message: 'Invalid or expired token' });
-    }
-
-    const profileUpdate = req.body;
-
-    // Remove read-only fields
-    delete profileUpdate.id;
-    delete profileUpdate.created_at;
-    delete profileUpdate.updated_at;
-    delete profileUpdate.email; // Email updates should go through auth
-    delete profileUpdate.role; // Role updates should be admin-only
-
-    // Update profile
-    const { data: updatedProfile, error } = await supabase
-      .from('profiles')
-      .update({ ...profileUpdate, updated_at: new Date().toISOString() })
-      .eq('id', user.id)
-      .select()
-      .single();
-
-    if (error) {
-      return res.status(500).json({ message: 'Error updating profile', error: error.message });
-    }
-
-    res.status(200).json({ 
-      message: 'Profile updated successfully',
-      profile: updatedProfile 
+    res.status(200).json({
+      message: "Profile updated successfully",
+      profile: formatProfile(profile),
     });
   } catch (error) {
-    console.error('Error in updateUserProfile:', error);
-    res.status(500).json({ message: 'Internal server error', error: error.message });
+    console.error("Error in updateUserProfile:", error);
+    res.status(500).json({ message: "Internal server error" });
   }
 };
 
@@ -204,39 +152,25 @@ exports.updateUserProfile = async (req, res) => {
  */
 exports.exportUserData = async (req, res) => {
   try {
-    const authHeader = req.headers.authorization;
-    if (!authHeader) {
-      return res.status(401).json({ message: 'Authorization header missing' });
-    }
-
-    const token = authHeader.replace('Bearer ', '');
-    
-    // Verify user with token
-    const { data: { user }, error: userError } = await supabase.auth.getUser(token);
-    if (userError || !user) {
-      return res.status(401).json({ message: 'Invalid or expired token' });
-    }
-
-    // Get all user data
-    const [profileResult, settingsResult, ticketsResult, commentsResult] = await Promise.all([
-      supabase.from('profiles').select('*').eq('id', user.id).single(),
-      supabase.from('user_settings').select('*').eq('user_id', user.id).single(),
-      supabase.from('tickets').select('*').eq('created_by', user.id),
-      supabase.from('ticket_comments').select('*').eq('user_id', user.id),
+    const [profile, settings, tickets, comments] = await Promise.all([
+      Profile.findOne({ userId: req.user.id }),
+      UserSettings.findOne({ userId: req.user.id }),
+      Ticket.find({ created_by: req.user.id }),
+      TicketComment.find({ user_id: req.user.id }),
     ]);
 
     const exportData = {
-      profile: profileResult.data,
-      settings: settingsResult.data,
-      tickets: ticketsResult.data || [],
-      comments: commentsResult.data || [],
+      profile: profile ? formatProfile(profile) : null,
+      settings: settings ? formatSettings(settings) : null,
+      tickets: tickets || [],
+      comments: comments || [],
       exported_at: new Date().toISOString(),
     };
 
     res.status(200).json(exportData);
   } catch (error) {
-    console.error('Error in exportUserData:', error);
-    res.status(500).json({ message: 'Internal server error', error: error.message });
+    console.error("Error in exportUserData:", error);
+    res.status(500).json({ message: "Internal server error" });
   }
 };
 
@@ -245,32 +179,19 @@ exports.exportUserData = async (req, res) => {
  */
 exports.deactivateAccount = async (req, res) => {
   try {
-    const authHeader = req.headers.authorization;
-    if (!authHeader) {
-      return res.status(401).json({ message: 'Authorization header missing' });
+    const profile = await Profile.findOneAndUpdate(
+      { userId: req.user.id },
+      { $set: { is_active: false } },
+      { new: true }
+    );
+
+    if (!profile) {
+      return res.status(404).json({ message: "Profile not found" });
     }
 
-    const token = authHeader.replace('Bearer ', '');
-    
-    // Verify user with token
-    const { data: { user }, error: userError } = await supabase.auth.getUser(token);
-    if (userError || !user) {
-      return res.status(401).json({ message: 'Invalid or expired token' });
-    }
-
-    // Deactivate account
-    const { error } = await supabase
-      .from('profiles')
-      .update({ is_active: false, updated_at: new Date().toISOString() })
-      .eq('id', user.id);
-
-    if (error) {
-      return res.status(500).json({ message: 'Error deactivating account', error: error.message });
-    }
-
-    res.status(200).json({ message: 'Account deactivated successfully' });
+    res.status(200).json({ message: "Account deactivated successfully" });
   } catch (error) {
-    console.error('Error in deactivateAccount:', error);
-    res.status(500).json({ message: 'Internal server error', error: error.message });
+    console.error("Error in deactivateAccount:", error);
+    res.status(500).json({ message: "Internal server error" });
   }
 };

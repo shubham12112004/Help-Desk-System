@@ -132,12 +132,15 @@ export function EnhancedBillingCard() {
     }).format(amount);
   };
 
+  const getPaidAmount = (bill) => (bill?.status === 'paid' ? (bill?.amount || 0) : 0);
+  const getPendingAmount = (bill) => (bill?.status === 'paid' ? 0 : (bill?.amount || 0));
+
   const totalPending = bills
     .filter(b => b.status !== 'paid')
-    .reduce((sum, b) => sum + (b.pending_amount || 0), 0);
+    .reduce((sum, b) => sum + getPendingAmount(b), 0);
 
   const totalBilled = bills.reduce((sum, b) => sum + (b.amount || 0), 0);
-  const totalPaid = bills.reduce((sum, b) => sum + (b.paid_amount || 0), 0);
+  const totalPaid = bills.reduce((sum, b) => sum + getPaidAmount(b), 0);
 
   if (loading) {
     return (

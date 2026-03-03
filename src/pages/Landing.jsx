@@ -20,12 +20,15 @@ import {
   Phone,
   Mail,
   MapPin,
+  Sparkles,
+  Bot,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import Footer from "@/components/Footer";
+import LandingChatbot from "@/components/LandingChatbot";
 import {
   Accordion,
   AccordionContent,
@@ -38,6 +41,7 @@ const Landing = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
   const [searchQuery, setSearchQuery] = useState("");
+  const [showAgentDemo, setShowAgentDemo] = useState(false);
 
   const handleGetStarted = () => {
     try {
@@ -195,9 +199,9 @@ const Landing = () => {
   ];
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-[#0b1220]">
       {/* Navigation */}
-      <nav className="sticky top-0 z-40 border-b border-border/40 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+      <nav className="sticky top-0 z-40 border-b border-border/40 bg-[#0b1220]/95 backdrop-blur supports-[backdrop-filter]:bg-[#0b1220]/70">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-16">
             <div className="flex items-center gap-3">
@@ -222,7 +226,7 @@ const Landing = () => {
       </nav>
 
       {/* Hero Section */}
-      <section className="relative overflow-hidden bg-gradient-to-b from-primary/10 via-background to-background py-20 sm:py-32">
+      <section className="relative overflow-hidden bg-gradient-to-b from-[#0b1220] via-[#0f172a] to-[#0b1220] py-20 sm:py-32">
         {/* Background effects */}
         <div className="absolute inset-0 overflow-hidden">
           <div className="absolute -top-40 -right-40 h-80 w-80 rounded-full bg-primary/20 blur-3xl" />
@@ -252,7 +256,7 @@ const Landing = () => {
             <div className="max-w-2xl mx-auto mb-12">
               <form
                 onSubmit={handleSearch}
-                className="flex gap-2 rounded-full bg-background/50 backdrop-blur border border-border/40 p-2 focus-within:border-primary/50 transition-colors"
+                className="flex gap-2 rounded-full bg-[#111827]/70 backdrop-blur border border-border/40 p-2 focus-within:border-primary/50 transition-colors"
               >
                 <div className="flex-1 flex items-center gap-2 px-4">
                   <Search className="h-5 w-5 text-muted-foreground" />
@@ -306,7 +310,7 @@ const Landing = () => {
                 return (
                   <div
                     key={index}
-                    className="flex flex-col items-center gap-2 p-4 rounded-lg bg-muted/30 border border-border/40 hover:border-primary/50 transition-colors"
+                    className="flex flex-col items-center gap-2 p-4 rounded-lg bg-[#111827] border border-border/40 hover:border-primary/50 transition-colors"
                   >
                     <Icon className="h-6 w-6 text-primary" />
                     <p className="text-xs sm:text-sm font-medium text-foreground text-center">
@@ -321,7 +325,7 @@ const Landing = () => {
       </section>
 
       {/* Statistics Section */}
-      <section className="py-12 sm:py-16 bg-muted/30 border-y border-border/40">
+      <section className="py-12 sm:py-16 bg-[#0f172a] border-y border-border/40">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-8">
             {stats.map((stat, index) => {
@@ -329,7 +333,7 @@ const Landing = () => {
               return (
                 <div key={index} className="text-center">
                   <div className="flex justify-center mb-3">
-                    <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-muted">
+                    <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-[#111827]">
                       <Icon className={cn("h-6 w-6", stat.color)} />
                     </div>
                   </div>
@@ -389,7 +393,7 @@ const Landing = () => {
       </section>
 
       {/* Departments Section */}
-      <section className="py-16 sm:py-20 bg-muted/20 border-y border-border/40">
+      <section className="py-16 sm:py-20 bg-[#0f172a] border-y border-border/40">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-12">
             <h2 className="text-3xl sm:text-4xl font-bold mb-4">
@@ -406,7 +410,7 @@ const Landing = () => {
                 key={index}
                 type="button"
                 onClick={handleGetStarted}
-                className="p-6 rounded-lg border border-border/40 bg-card hover:border-primary/50 hover:bg-primary/5 transition-all hover:shadow-md group text-left"
+                className="p-6 rounded-lg border border-border/40 bg-[#111827] hover:border-primary/50 hover:bg-primary/5 transition-all hover:shadow-md group text-left"
               >
                 <div className="flex items-start justify-between mb-3">
                   <span className="text-3xl">{dept.emoji}</span>
@@ -460,8 +464,143 @@ const Landing = () => {
         </div>
       </section>
 
+      {/* AI Agent Showcase Section */}
+      <section id="ai-agent" className="py-16 sm:py-20 bg-gradient-to-b from-blue-50/20 to-purple-50/20 border-y border-border/40">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="grid lg:grid-cols-2 gap-12 items-center">
+            {/* Left: Features */}
+            <div>
+              <div className="flex items-center gap-3 mb-6">
+                <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-gradient-to-br from-blue-600 to-purple-600">
+                  <Sparkles className="h-6 w-6 text-white" />
+                </div>
+                <span className="inline-block text-sm font-semibold text-primary">
+                  Intelligent Assistant
+                </span>
+              </div>
+
+              <h2 className="text-3xl sm:text-4xl font-bold mb-6">
+                AI-Powered Hospital Agent
+              </h2>
+
+              <p className="text-lg text-muted-foreground mb-8">
+                Meet our intelligent AI assistant that understands your healthcare needs and provides accurate, personalized guidance.
+              </p>
+
+              <div className="space-y-4 mb-8">
+                {[
+                  {
+                    icon: MessageCircle,
+                    title: "Natural Conversation",
+                    description: "Chat naturally and get instant, accurate responses",
+                  },
+                  {
+                    icon: Zap,
+                    title: "Intent Recognition",
+                    description: "Understands what you need - appointments, info, or help",
+                  },
+                  {
+                    icon: Bot,
+                    title: "Smart Suggestions",
+                    description: "Get actionable recommendations tailored to your needs",
+                  },
+                  {
+                    icon: Shield,
+                    title: "Accurate Information",
+                    description: "Responds using hospital data and medical knowledge",
+                  },
+                ].map((feature, idx) => {
+                  const FeatureIcon = feature.icon;
+                  return (
+                    <div key={idx} className="flex gap-4">
+                      <div className="flex-shrink-0">
+                        <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/20">
+                          <FeatureIcon className="h-5 w-5 text-primary" />
+                        </div>
+                      </div>
+                      <div>
+                        <h3 className="font-semibold text-foreground mb-1">
+                          {feature.title}
+                        </h3>
+                        <p className="text-sm text-muted-foreground">
+                          {feature.description}
+                        </p>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+
+              <Button
+                size="lg"
+                className="gap-2"
+                onClick={() => setShowAgentDemo(true)}
+              >
+                Try Agent Now <ArrowRight className="h-5 w-5" />
+              </Button>
+            </div>
+
+            {/* Right: Demo Card */}
+            <div className="relative">
+              <div className="absolute inset-0 rounded-2xl bg-gradient-to-br from-blue-500/20 to-purple-500/20 blur-2xl"></div>
+              <Card className="relative border-2 border-primary/30 bg-gradient-to-br from-blue-500/5 to-purple-500/5 p-8">
+                <div className="space-y-4 max-h-96 overflow-hidden">
+                  {/* Chat Messages */}
+                  <div className="space-y-3">
+                    <div className="flex gap-3">
+                      <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary/20 flex-shrink-0">
+                        <Sparkles className="h-4 w-4 text-primary" />
+                      </div>
+                      <div className="bg-[#111827] rounded-lg px-4 py-2 max-w-xs text-sm">
+                        Hi! I'm your hospital assistant. How can I help you today?
+                      </div>
+                    </div>
+
+                    <div className="flex justify-end gap-3">
+                      <div className="bg-primary text-primary-foreground rounded-lg px-4 py-2 max-w-xs text-sm">
+                        I need to book an appointment with a cardiologist
+                      </div>
+                    </div>
+
+                    <div className="flex gap-3">
+                      <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary/20 flex-shrink-0">
+                        <Sparkles className="h-4 w-4 text-primary" />
+                      </div>
+                      <div className="bg-[#111827] rounded-lg px-4 py-2 max-w-xs text-sm space-y-2">
+                        <p>Great! I can help you with that. Our cardiology department has 15+ specialists available.</p>
+                        <div className="grid grid-cols-2 gap-2 mt-2">
+                          <button className="text-xs p-2 rounded border border-border hover:border-primary hover:bg-primary/5 transition-all text-left">
+                            📅 Book Appointment
+                          </button>
+                          <button className="text-xs p-2 rounded border border-border hover:border-primary hover:bg-primary/5 transition-all text-left">
+                            👨‍⚕️ View Doctors
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="absolute bottom-4 right-4">
+                  <div className="flex items-center gap-2 text-xs text-muted-foreground px-3 py-1 bg-[#0b1220] rounded-full border border-border">
+                    <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse"></div>
+                    AI Powered
+                  </div>
+                </div>
+              </Card>
+
+              <div className="mt-6 p-4 rounded-lg border border-border/40 bg-[#111827]">
+                <p className="text-xs text-muted-foreground">
+                  <strong>💡 Tip:</strong> The agent uses real hospital data and AI to provide accurate answers about appointments, departments, medical information, and support services.
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
       {/* CTA Section */}
-      <section className="py-16 sm:py-20 bg-gradient-to-r from-primary/10 to-primary/5 border-y border-border/40">
+      <section className="py-16 sm:py-20 bg-gradient-to-r from-[#0b1220] to-[#0f172a] border-y border-border/40">
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
           <h2 className="text-3xl sm:text-4xl font-bold mb-4">
             Ready to Get Help?
@@ -494,6 +633,9 @@ const Landing = () => {
 
       {/* Footer */}
       <Footer />
+
+      {/* AI Chatbot Widget */}
+      <LandingChatbot />
     </div>
   );
 };

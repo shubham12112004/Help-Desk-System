@@ -136,7 +136,7 @@ export function AmbulanceCard() {
       });
 
       if (error) {
-        toast.error('Failed to request ambulance');
+        toast.error(error.message || 'Failed to request ambulance');
         return;
       }
 
@@ -149,7 +149,7 @@ export function AmbulanceCard() {
       loadAmbulanceRequests();
     } catch (error) {
       console.error('Error requesting ambulance:', error);
-      toast.error('Failed to request ambulance');
+      toast.error(error.message || 'Failed to request ambulance');
     } finally {
       setIsRequesting(false);
     }
@@ -407,9 +407,10 @@ export function AmbulanceCard() {
 
                 {/* Map View for Active Requests */}
                 {request.user_latitude && request.user_longitude && 
-                 ['assigned', 'dispatched', 'arrived'].includes(request.status) && (
+                 !['completed', 'cancelled'].includes(request.status) && (
                   <div className="mt-3">
                     <AmbulanceMapView
+                      request={request}
                       userLat={request.user_latitude}
                       userLng={request.user_longitude}
                       ambulanceLat={request.ambulance_latitude}

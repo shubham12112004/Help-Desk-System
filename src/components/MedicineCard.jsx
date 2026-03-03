@@ -7,7 +7,8 @@ import { useAuth } from "@/hooks/useAuth";
 import {
   getActivePrescriptions,
   getMedicineRequests,
-  createMedicineRequest
+  createMedicineRequest,
+  subscribeToMedicineRequests
 } from "@/services/hospital";
 import {
   Dialog,
@@ -29,6 +30,17 @@ export function MedicineCard() {
   useEffect(() => {
     if (user) {
       loadData();
+      
+      // Subscribe to real-time updates
+      const subscription = subscribeToMedicineRequests(user.id, (payload) => {
+        console.log('Medicine request update:', payload);
+        // Reload data on any change (INSERT or UPDATE)
+        loadData();
+      });
+
+      return () => {
+        subscription?.unsubscribe();
+      };
     }
   }, [user]);
 
@@ -57,11 +69,13 @@ export function MedicineCard() {
   const handleRequestMedicine = async (prescription) => {
     setIsRequesting(true);
     try {
-      const { error } = await createMedicineRequest(
-        user.id,
-        prescription.id,
-        'delivery'
-      );
+      const { error } = await createMedicineRequest({
+        patient_id: user.id,
+        prescription_id: prescription.id,
+        delivery_type: 'delivery',
+        delivery_status: 'pending',
+        delivery_address: 'Hospital Room' // Can be customized
+      });
 
       if (error) {
         toast.error('Failed to request medicine');
@@ -92,9 +106,9 @@ export function MedicineCard() {
   const getDeliveryColor = (status) => {
     const colors = {
       pending: 'bg-orange-500',
-      in_transit: 'bg-blue-500',
-      delivered: 'bg-green-500',
-      completed: 'bg-gray-500'
+      processing: 'bg-blue-500',
+      ready: 'bg-purple-500',
+      delivered: 'bg-green-500'
     };
     return colors[status] || 'bg-gray-500';
   };

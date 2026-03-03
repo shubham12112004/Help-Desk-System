@@ -26,7 +26,9 @@ import HospitalAppointments from "./pages/HospitalAppointments";
 import Emergency from "./pages/Emergency";
 import HospitalBilling from "./pages/HospitalBilling";
 import TokenQueue from "./pages/TokenQueue";
-import { Suspense } from "react";
+import StaffControlPanel from "./components/StaffControlPanel";
+import VoiceInputDemo from "./pages/VoiceInputDemo";
+import PatientMonitoring from "./pages/PatientMonitoring";import { SystemTest } from "./pages/SystemTest";import { Suspense } from "react";
 
 const queryClient = new QueryClient();
 
@@ -127,6 +129,14 @@ const App = () => {
                       </ProtectedRoute>
                     }
                   />
+                  <Route
+                    path="/patient-monitoring"
+                    element={
+                      <ProtectedRoute>
+                        <PatientMonitoring />
+                      </ProtectedRoute>
+                    }
+                  />
 
                   {/* Patient Hospital Services */}
                   <Route
@@ -190,6 +200,30 @@ const App = () => {
                     element={
                       <ProtectedRoute>
                         <HospitalBilling />
+                      </ProtectedRoute>
+                    }
+                  />
+                  <Route
+                    path="/staff-control"
+                    element={
+                      <ProtectedRoute>
+                        <StaffControlPanel />
+                      </ProtectedRoute>
+                    }
+                  />
+                  <Route
+                    path="/voice-demo"
+                    element={
+                      <ProtectedRoute>
+                        <VoiceInputDemo />
+                      </ProtectedRoute>
+                    }
+                  />
+                  <Route
+                    path="/system-test"
+                    element={
+                      <ProtectedRoute>
+                        <SystemTest />
                       </ProtectedRoute>
                     }
                   />

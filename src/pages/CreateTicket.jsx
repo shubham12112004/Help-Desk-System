@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import { AppLayout } from "@/components/AppLayout";
 import { useTickets } from "@/hooks/useTickets";
 import { useAuth } from "@/hooks/useAuth";
@@ -60,6 +60,7 @@ const departments = Object.entries(departmentLabels).map(([value, label]) => ({
 
 const CreateTicket = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const { createTicket } = useTickets();
   const { user } = useAuth();
   const [userDepartment, setUserDepartment] = useState(null);
@@ -71,15 +72,18 @@ const CreateTicket = () => {
   const [loadingAI, setLoadingAI] = useState(false);
   const [aiEnabled, setAiEnabled] = useState(true);
 
+  // Get prefilled data from navigation state
+  const prefilledData = location.state?.prefilledData || {};
+
   const [form, setForm] = useState({
-    title: "",
-    description: "",
-    priority: "medium",
-    type: "it-support",
-    category: "software",
-    department: "administration",
-    patient_mrn: "",
-    patient_name: "",
+    title: prefilledData.title || "",
+    description: prefilledData.description || "",
+    priority: prefilledData.priority || "medium",
+    type: prefilledData.type || "it-support",
+    category: prefilledData.category || "software",
+    department: prefilledData.department || "administration",
+    patient_mrn: prefilledData.patient_mrn || "",
+    patient_name: prefilledData.patient_name || "",
   });
 
   useEffect(() => {

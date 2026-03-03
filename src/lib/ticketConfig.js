@@ -23,6 +23,16 @@ export const categoryLabels = {
   billing: "Billing",
   appointment: "Appointment",
   general: "General",
+  network: "Network Issue",
+  hardware: "Hardware Issue",
+  software: "Software Issue",
+  "emr-access": "EMR Access",
+  complaint: "Patient Complaint",
+  feedback: "Patient Feedback",
+  maintenance: "Maintenance Request",
+  equipment: "Equipment Issue",
+  housekeeping: "Housekeeping",
+  "pharmacy-ops": "Pharmacy Operations",
 };
 
 export const departmentLabels = {
@@ -35,7 +45,7 @@ export const departmentLabels = {
 };
 
 export const categoriesByType = {
-  "it-support": ["technical", "general"],
-  "patient-support": ["appointment", "billing", "general"],
-  "internal-operations": ["general"],
+  "it-support": ["network", "hardware", "software", "emr-access", "technical", "general"],
+  "patient-support": ["complaint", "appointment", "billing", "feedback", "general"],
+  "internal-operations": ["maintenance", "equipment", "housekeeping", "pharmacy-ops", "general"],
 };

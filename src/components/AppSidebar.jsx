@@ -1,4 +1,5 @@
 import { Link, useLocation, useNavigate } from "react-router-dom";
+import { useState, useEffect } from "react";
 import {
   LayoutDashboard,
   Ticket,
@@ -19,32 +20,90 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/hooks/useAuth";
+import { supabase } from "@/integrations/supabase/client";
+import { useTranslation } from "@/hooks/useTranslation";
 
 export function AppSidebar({ isOpen = true, onClose = () => {} }) {
   const location = useLocation();
   const navigate = useNavigate();
   const { user, logout } = useAuth();
-  const userRole = user?.user_metadata?.role ?? "citizen";
+  const [profile, setProfile] = useState(null);
+  const [profileLoading, setProfileLoading] = useState(true);
+  const { t } = useTranslation();
+
+  // Load user profile from database
+  useEffect(() => {
+    const loadProfile = async () => {
+      if (user) {
+        setProfileLoading(true);
+        const { data } = await supabase
+          .from('profiles')
+          .select('*')
+          .eq('id', user.id)
+          .single();
+        
+        if (data) {
+          setProfile(data);
+        }
+        setProfileLoading(false);
+      } else {
+        setProfile(null);
+        setProfileLoading(false);
+      }
+    };
+
+    loadProfile();
+  }, [user]);
+
+  // Use profile role from database only (avoid stale metadata)
+  const userRole = profile?.role ?? "citizen";
   const isStaff = userRole === "staff" || userRole === "admin";
+  const showPatientServices = !profileLoading && !isStaff;
 
   const navItems = [
-    { to: "/dashboard", icon: LayoutDashboard, label: "Dashboard" },
-    { to: "/tickets", icon: Ticket, label: isStaff ? "All Tickets" : "My Tickets" },
-    { to: "/create", icon: PlusCircle, label: "New Ticket" },
-    ...(isStaff
+    { to: "/dashboard", icon: LayoutDashboard, label: t("nav.dashboard") },
+    {
+      to: "/tickets",
+      icon: Ticket,
+      label: isStaff ? t("nav.allTickets") : t("nav.myTickets"),
+    },
+    { to: "/create", icon: PlusCircle, label: t("nav.newTicket") },
+    ...(userRole === "admin"
       ? [
-          { to: "/analytics", icon: BarChart3, label: "Analytics" },
-          { to: "/staff-roster", icon: Users, label: "Staff Roster" },
+          { to: "/analytics", icon: BarChart3, label: t("nav.monitoring") },
+          { to: "/staff-roster", icon: Users, label: t("nav.staffManagement") },
+          { to: "/patient-profile", icon: User, label: t("nav.patients") },
+          { to: "/appointments", icon: Calendar, label: t("nav.appointments") },
+          { to: "/billing", icon: CreditCard, label: t("nav.billing") },
+          { to: "/pharmacy", icon: Pill, label: t("nav.pharmacy") },
+          { to: "/lab-tests", icon: Microscope, label: t("nav.labReports") },
+          { to: "/emergency", icon: Ambulance, label: t("nav.ambulance") },
+          { to: "/token-queue", icon: Ticket, label: t("nav.tokenQueue") },
+          { to: "/medical", icon: Bed, label: t("nav.medicalInfo") },
         ]
-      : []),
-    { to: "/settings", icon: Settings, label: "Settings" },
+      : isStaff
+        ? [
+            { to: "/analytics", icon: BarChart3, label: t("nav.analytics") },
+            { to: "/staff-roster", icon: Users, label: t("nav.staffRoster") },
+            { to: "/patient-profile", icon: User, label: t("nav.patientLookup") },
+            { to: "/appointments", icon: Calendar, label: t("nav.appointments") },
+            { to: "/lab-tests", icon: Microscope, label: t("nav.labReports") },
+            { to: "/emergency", icon: Ambulance, label: t("nav.emergency") },
+            { to: "/pharmacy", icon: Pill, label: t("nav.pharmacy") },
+            { to: "/billing", icon: CreditCard, label: t("nav.billing") },
+            { to: "/medical", icon: Bed, label: t("nav.medicalInfo") },
+            { to: "/token-queue", icon: Ticket, label: t("nav.tokenQueue") },
+          ]
+        : []),
+    { to: "/settings", icon: Settings, label: t("nav.settings") },
   ];
 
   const roleLabel = {
-    admin: "Admin",
-    staff: "Staff",
-    citizen: "Citizen",
-    user: "Citizen",
+    admin: t("role.admin"),
+    staff: t("role.staff"),
+    patient: t("role.patient"),
+    citizen: t("role.citizen"),
+    user: t("role.citizen"),
   }[userRole];
 
   const handleSignOut = async () => {
@@ -85,7 +144,7 @@ export function AppSidebar({ isOpen = true, onClose = () => {} }) {
           </div>
           <div>
             <h1 className="text-base font-bold text-foreground">MedDesk</h1>
-            <p className="text-xs text-muted-foreground">Hospital Help Desk</p>
+            <p className="text-xs text-muted-foreground">{t("sidebar.helpDesk")}</p>
           </div>
         </div>
         <button
@@ -128,21 +187,21 @@ export function AppSidebar({ isOpen = true, onClose = () => {} }) {
       </nav>
 
       {/* Hospital Services - For patients */}
-      {!isStaff && (
+      {showPatientServices && (
         <div className="border-t border-border px-3 py-4">
           <p className="text-xs font-semibold text-muted-foreground uppercase px-3 mb-3">
-            Hospital Services
+            {t("sidebar.hospitalServices")}
           </p>
           <nav className="space-y-1">
             {[
-              { to: "/patient-profile", icon: User, label: "My Profile" },
-              { to: "/token-queue", icon: Ticket, label: "OPD Token" },
-              { to: "/medical", icon: Bed, label: "Medical Info" },
-              { to: "/pharmacy", icon: Pill, label: "Pharmacy" },
-              { to: "/lab-tests", icon: Microscope, label: "Lab Reports" },
-              { to: "/appointments", icon: Calendar, label: "Appointments" },
-              { to: "/emergency", icon: Ambulance, label: "Emergency" },
-              { to: "/billing", icon: CreditCard, label: "Billing" },
+              { to: "/patient-profile", icon: User, label: t("sidebar.myProfile") },
+              { to: "/token-queue", icon: Ticket, label: t("sidebar.opdToken") },
+              { to: "/medical", icon: Bed, label: t("nav.medicalInfo") },
+              { to: "/pharmacy", icon: Pill, label: t("nav.pharmacy") },
+              { to: "/lab-tests", icon: Microscope, label: t("nav.labReports") },
+              { to: "/appointments", icon: Calendar, label: t("nav.appointments") },
+              { to: "/emergency", icon: Ambulance, label: t("nav.emergency") },
+              { to: "/billing", icon: CreditCard, label: t("nav.billing") },
             ].map((item) => {
               const isActive = location.pathname === item.to;
               const Icon = item.icon;

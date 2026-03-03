@@ -2,13 +2,14 @@ import { useState, useEffect } from "react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Calendar, Clock, Plus, AlertCircle, Loader2, User, X } from "lucide-react";
+import { Calendar, Clock, Plus, AlertCircle, Loader2, User, X, Edit2 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { 
   createAppointment, 
   getUpcomingAppointments,
   cancelAppointment 
 } from "@/services/hospital";
+import { rescheduleAppointment } from "@/services/enhance-hospital";
 import {
   Dialog,
   DialogContent,
@@ -51,6 +52,10 @@ export function AppointmentsCard() {
   const [selectedTime, setSelectedTime] = useState('');
   const [reason, setReason] = useState('');
   const [isCancelling, setIsCancelling] = useState(null);
+  const [isRescheduling, setIsRescheduling] = useState(false);
+  const [rescheduleAppointmentData, setRescheduleAppointmentData] = useState(null);
+  const [rescheduleDate, setRescheduleDate] = useState('');
+  const [rescheduleTime, setRescheduleTime] = useState('');
 
   useEffect(() => {
     if (user) {
@@ -79,6 +84,11 @@ export function AppointmentsCard() {
       return;
     }
 
+    if (!user || !user.id) {
+      toast.error('Please login to book an appointment');
+      return;
+    }
+
     setIsBooking(true);
     try {
       const appointmentDateTime = `${selectedDate}T${convertTo24Hour(selectedTime)}`;
@@ -93,7 +103,17 @@ export function AppointmentsCard() {
       );
 
       if (error) {
-        toast.error('Failed to book appointment');
+        console.error('Appointment booking error:', error);
+        const errorMsg = error.message || error.hint || 'Failed to book appointment';
+        toast.error(`Appointment Error: ${errorMsg}`, {
+          description: error.details || 'Please check your permissions and try again',
+          duration: 5000
+        });
+        return;
+      }
+
+      if (!data) {
+        toast.error('No appointment data returned');
         return;
       }
 
@@ -105,7 +125,10 @@ export function AppointmentsCard() {
       loadAppointments();
     } catch (error) {
       console.error('Error booking appointment:', error);
-      toast.error('Failed to book appointment');
+      toast.error(`Error: ${error.message || 'Failed to book appointment'}`, {
+        description: 'Please refresh and try again',
+        duration: 5000
+      });
     } finally {
       setIsBooking(false);
     }
@@ -142,6 +165,39 @@ export function AppointmentsCard() {
       toast.error('Failed to cancel appointment');
     } finally {
       setIsCancelling(null);
+    }
+  };
+
+  const handleRescheduleAppointment = async () => {
+    if (!rescheduleDate || !rescheduleTime) {
+      toast.error('Please select both date and time');
+      return;
+    }
+
+    setIsRescheduling(true);
+    try {
+      const { data, error } = await rescheduleAppointment(
+        rescheduleAppointmentData.id,
+        rescheduleDate,
+        rescheduleTime,
+        'Patient requested reschedule'
+      );
+
+      if (error) {
+        toast.error('Failed to reschedule appointment');
+        return;
+      }
+
+      toast.success('Appointment rescheduled successfully');
+      setRescheduleAppointmentData(null);
+      setRescheduleDate('');
+      setRescheduleTime('');
+      loadAppointments();
+    } catch (error) {
+      console.error('Error rescheduling appointment:', error);
+      toast.error('Failed to reschedule appointment');
+    } finally {
+      setIsRescheduling(false);
     }
   };
 
@@ -360,19 +416,98 @@ export function AppointmentsCard() {
 
                 {/* Actions */}
                 <div className="flex gap-2">
-                  <Button 
-                    variant="outline" 
-                    size="sm" 
-                    className="flex-1"
-                  >
-                    Reschedule
-                  </Button>
+                  <Dialog open={rescheduleAppointmentData?.id === appointment.id} onOpenChange={(open) => !open && setRescheduleAppointmentData(null)}>
+                    <DialogTrigger asChild>
+                      <Button 
+                        variant="outline" 
+                        size="sm" 
+                        className="flex-1 gap-2"
+                        onClick={() => setRescheduleAppointmentData(appointment)}
+                        disabled={appointment.status === 'cancelled' || appointment.status === 'completed'}
+                      >
+                        <Edit2 className="h-4 w-4" />
+                        Reschedule
+                      </Button>
+                    </DialogTrigger>
+                    <DialogContent>
+                      <DialogHeader>
+                        <DialogTitle>Reschedule Appointment</DialogTitle>
+                      </DialogHeader>
+                      <div className="space-y-4 py-4">
+                        <div>
+                          <p className="text-sm font-medium mb-2">Current Appointment</p>
+                          <div className="p-3 bg-slate-50 dark:bg-slate-900 rounded border">
+                            <p className="text-sm"><strong>Department:</strong> {appointment.department}</p>
+                            <p className="text-sm"><strong>Date:</strong> {formatDate(appointment.appointment_date)}</p>
+                            <p className="text-sm"><strong>Time:</strong> {appointment.appointment_time}</p>
+                          </div>
+                        </div>
+
+                        <div>
+                          <label className="text-sm font-medium mb-2 block">New Date</label>
+                          <Input
+                            type="date"
+                            value={rescheduleDate}
+                            onChange={(e) => setRescheduleDate(e.target.value)}
+                            min={getMinDate()}
+                          />
+                        </div>
+
+                        <div>
+                          <label className="text-sm font-medium mb-2 block">New Time</label>
+                          <Select value={rescheduleTime} onValueChange={setRescheduleTime}>
+                            <SelectTrigger>
+                              <SelectValue placeholder="Select time" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {TIME_SLOTS.map(slot => (
+                                <SelectItem key={slot} value={slot}>
+                                  {slot}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+
+                        <div className="flex gap-2 pt-4">
+                          <Button 
+                            variant="outline" 
+                            className="flex-1"
+                            onClick={() => {
+                              setRescheduleAppointmentData(null);
+                              setRescheduleDate('');
+                              setRescheduleTime('');
+                            }}
+                          >
+                            Cancel
+                          </Button>
+                          <Button 
+                            className="flex-1 gap-2"
+                            onClick={handleRescheduleAppointment}
+                            disabled={isRescheduling}
+                          >
+                            {isRescheduling ? (
+                              <>
+                                <Loader2 className="h-4 w-4 animate-spin" />
+                                Rescheduling...
+                              </>
+                            ) : (
+                              <>
+                                <Calendar className="h-4 w-4" />
+                                Confirm Reschedule
+                              </>
+                            )}
+                          </Button>
+                        </div>
+                      </div>
+                    </DialogContent>
+                  </Dialog>
                   <Button
                     variant="destructive"
                     size="sm"
                     className="flex-1 gap-2"
                     onClick={() => handleCancelAppointment(appointment.id)}
-                    disabled={isCancelling === appointment.id}
+                    disabled={isCancelling === appointment.id || appointment.status === 'cancelled' || appointment.status === 'completed'}
                   >
                     {isCancelling === appointment.id ? (
                       <>

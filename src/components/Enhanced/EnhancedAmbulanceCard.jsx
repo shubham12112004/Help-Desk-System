@@ -136,7 +136,7 @@ export function EnhancedAmbulanceCard() {
       });
 
       if (error) {
-        toast.error('Failed to request ambulance');
+        toast.error(error.message || 'Failed to request ambulance');
         return;
       }
 
@@ -149,7 +149,7 @@ export function EnhancedAmbulanceCard() {
       loadAmbulanceRequests();
     } catch (error) {
       console.error('Error requesting:', error);
-      toast.error('Failed to request ambulance');
+      toast.error(error.message || 'Failed to request ambulance');
     } finally {
       setIsRequesting(false);
     }

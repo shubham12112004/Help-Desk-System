@@ -3,7 +3,7 @@ import mapboxgl from "mapbox-gl";
 import "mapbox-gl/dist/mapbox-gl.css";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { MapPin, Navigation, Clock, TrendingUp } from "lucide-react";
+import { MapPin, Navigation, Clock, TrendingUp, ExternalLink } from "lucide-react";
 
 // Initialize Mapbox token
 mapboxgl.accessToken = import.meta.env.VITE_MAPBOX_TOKEN || "";
@@ -23,6 +23,7 @@ mapboxgl.accessToken = import.meta.env.VITE_MAPBOX_TOKEN || "";
  * @param {string} props.status - Request status
  */
 export function AmbulanceMapView({
+  request,
   userLat,
   userLng,
   ambulanceLat,
@@ -32,11 +33,124 @@ export function AmbulanceMapView({
   etaMinutes,
   status = "requested"
 }) {
+  const resolvedUserLat = Number(request?.user_latitude ?? userLat);
+  const resolvedUserLng = Number(request?.user_longitude ?? userLng);
+  const resolvedAmbulanceLat = Number(request?.ambulance_latitude ?? ambulanceLat);
+  const resolvedAmbulanceLng = Number(request?.ambulance_longitude ?? ambulanceLng);
+  const resolvedPickupLocation = request?.pickup_location || pickupLocation;
+  const resolvedStatus = request?.status || status;
+
+  const calculateDistanceKm = (lat1, lon1, lat2, lon2) => {
+    if (![lat1, lon1, lat2, lon2].every((value) => Number.isFinite(value))) return null;
+    const earthRadiusKm = 6371;
+    const dLat = ((lat2 - lat1) * Math.PI) / 180;
+    const dLon = ((lon2 - lon1) * Math.PI) / 180;
+    const a =
+      Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+      Math.cos((lat1 * Math.PI) / 180) * Math.cos((lat2 * Math.PI) / 180) * Math.sin(dLon / 2) * Math.sin(dLon / 2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+    return earthRadiusKm * c;
+  };
+
+  const resolvedDistanceKm =
+    Number.isFinite(Number(request?.distance_km ?? distanceKm))
+      ? Number(request?.distance_km ?? distanceKm)
+      : calculateDistanceKm(resolvedUserLat, resolvedUserLng, resolvedAmbulanceLat, resolvedAmbulanceLng);
+
+  const resolvedEtaMinutes =
+    Number.isFinite(Number(request?.eta_minutes ?? etaMinutes))
+      ? Number(request?.eta_minutes ?? etaMinutes)
+      : resolvedDistanceKm
+      ? Math.max(2, Math.round(resolvedDistanceKm * 3))
+      : null;
+
+  const [simulatedAmbulancePos, setSimulatedAmbulancePos] = useState(() => {
+    if (Number.isFinite(resolvedAmbulanceLat) && Number.isFinite(resolvedAmbulanceLng)) {
+      return { lat: resolvedAmbulanceLat, lng: resolvedAmbulanceLng };
+    }
+    if (Number.isFinite(resolvedUserLat) && Number.isFinite(resolvedUserLng)) {
+      return {
+        lat: resolvedUserLat + 0.018,
+        lng: resolvedUserLng + 0.018,
+      };
+    }
+    return null;
+  });
+
   const mapContainer = useRef(null);
   const map = useRef(null);
   const [mapLoaded, setMapLoaded] = useState(false);
   const userMarker = useRef(null);
   const ambulanceMarker = useRef(null);
+
+  useEffect(() => {
+    if (Number.isFinite(resolvedAmbulanceLat) && Number.isFinite(resolvedAmbulanceLng)) {
+      setSimulatedAmbulancePos({ lat: resolvedAmbulanceLat, lng: resolvedAmbulanceLng });
+      return;
+    }
+
+    if (Number.isFinite(resolvedUserLat) && Number.isFinite(resolvedUserLng)) {
+      setSimulatedAmbulancePos((current) =>
+        current || {
+          lat: resolvedUserLat + 0.018,
+          lng: resolvedUserLng + 0.018,
+        }
+      );
+    }
+  }, [resolvedAmbulanceLat, resolvedAmbulanceLng, resolvedUserLat, resolvedUserLng]);
+
+  useEffect(() => {
+    const isActiveTrip = ["assigned", "dispatched"].includes(String(resolvedStatus).toLowerCase());
+    const hasPatient = Number.isFinite(resolvedUserLat) && Number.isFinite(resolvedUserLng);
+
+    if (!isActiveTrip || !hasPatient || !simulatedAmbulancePos) {
+      return;
+    }
+
+    const intervalId = setInterval(() => {
+      setSimulatedAmbulancePos((current) => {
+        if (!current) return current;
+
+        const latDelta = resolvedUserLat - current.lat;
+        const lngDelta = resolvedUserLng - current.lng;
+        const distance = Math.sqrt(latDelta * latDelta + lngDelta * lngDelta);
+
+        if (distance < 0.00035) {
+          return { lat: resolvedUserLat, lng: resolvedUserLng };
+        }
+
+        const stepFactor = 0.18;
+        return {
+          lat: current.lat + latDelta * stepFactor,
+          lng: current.lng + lngDelta * stepFactor,
+        };
+      });
+    }, 3000);
+
+    return () => clearInterval(intervalId);
+  }, [resolvedStatus, resolvedUserLat, resolvedUserLng, simulatedAmbulancePos]);
+
+  const effectiveAmbulanceLat = Number.isFinite(resolvedAmbulanceLat)
+    ? resolvedAmbulanceLat
+    : simulatedAmbulancePos?.lat;
+  const effectiveAmbulanceLng = Number.isFinite(resolvedAmbulanceLng)
+    ? resolvedAmbulanceLng
+    : simulatedAmbulancePos?.lng;
+
+  const liveDistanceKm = calculateDistanceKm(
+    resolvedUserLat,
+    resolvedUserLng,
+    effectiveAmbulanceLat,
+    effectiveAmbulanceLng
+  );
+
+  const effectiveDistanceKm = Number.isFinite(liveDistanceKm)
+    ? liveDistanceKm
+    : resolvedDistanceKm;
+
+  const effectiveEtaMinutes = Number.isFinite(effectiveDistanceKm)
+    ? Math.max(1, Math.round(effectiveDistanceKm * 3))
+    : resolvedEtaMinutes;
 
   // Initialize map
   useEffect(() => {
@@ -48,8 +162,8 @@ export function AmbulanceMapView({
     }
 
     // Default center (India)
-    const centerLng = userLng || 77.2090;
-    const centerLat = userLat || 28.6139;
+    const centerLng = resolvedUserLng || 77.2090;
+    const centerLat = resolvedUserLat || 28.6139;
 
     map.current = new mapboxgl.Map({
       container: mapContainer.current,
@@ -70,11 +184,11 @@ export function AmbulanceMapView({
         map.current = null;
       }
     };
-  }, []);
+  }, [resolvedUserLat, resolvedUserLng]);
 
   // Update user marker
   useEffect(() => {
-    if (!map.current || !mapLoaded || !userLat || !userLng) return;
+    if (!map.current || !mapLoaded || !resolvedUserLat || !resolvedUserLng) return;
 
     // Remove old marker
     if (userMarker.current) {
@@ -91,13 +205,13 @@ export function AmbulanceMapView({
     el.style.cursor = "pointer";
 
     userMarker.current = new mapboxgl.Marker(el)
-      .setLngLat([userLng, userLat])
+      .setLngLat([resolvedUserLng, resolvedUserLat])
       .setPopup(
         new mapboxgl.Popup({ offset: 25 })
           .setHTML(`
             <div style="padding: 8px;">
               <strong style="color: #ef4444;">Patient Location</strong>
-              <p style="margin: 4px 0 0; font-size: 12px;">${pickupLocation || "Pickup Location"}</p>
+              <p style="margin: 4px 0 0; font-size: 12px;">${resolvedPickupLocation || "Pickup Location"}</p>
             </div>
           `)
       )
@@ -105,15 +219,15 @@ export function AmbulanceMapView({
 
     // Center map on user location
     map.current.flyTo({
-      center: [userLng, userLat],
+      center: [resolvedUserLng, resolvedUserLat],
       zoom: 13,
       duration: 1000
     });
-  }, [userLat, userLng, pickupLocation, mapLoaded]);
+  }, [resolvedUserLat, resolvedUserLng, resolvedPickupLocation, mapLoaded]);
 
   // Update ambulance marker
   useEffect(() => {
-    if (!map.current || !mapLoaded || !ambulanceLat || !ambulanceLng) return;
+    if (!map.current || !mapLoaded || !effectiveAmbulanceLat || !effectiveAmbulanceLng) return;
 
     // Remove old marker
     if (ambulanceMarker.current) {
@@ -131,35 +245,35 @@ export function AmbulanceMapView({
     el.style.animation = "pulse 2s infinite";
 
     ambulanceMarker.current = new mapboxgl.Marker(el)
-      .setLngLat([ambulanceLng, ambulanceLat])
+      .setLngLat([effectiveAmbulanceLng, effectiveAmbulanceLat])
       .setPopup(
         new mapboxgl.Popup({ offset: 25 })
           .setHTML(`
             <div style="padding: 8px;">
               <strong style="color: #3b82f6;">🚑 Ambulance</strong>
-              <p style="margin: 4px 0 0; font-size: 12px;">Status: ${status}</p>
-              ${etaMinutes ? `<p style="margin: 4px 0 0; font-size: 12px;">ETA: ${etaMinutes} min</p>` : ""}
+              <p style="margin: 4px 0 0; font-size: 12px;">Status: ${resolvedStatus}</p>
+              ${effectiveEtaMinutes ? `<p style="margin: 4px 0 0; font-size: 12px;">ETA: ${effectiveEtaMinutes} min</p>` : ""}
             </div>
           `)
       )
       .addTo(map.current);
 
     // If both markers exist, fit bounds to show both
-    if (userLat && userLng && ambulanceLat && ambulanceLng) {
+    if (resolvedUserLat && resolvedUserLng && effectiveAmbulanceLat && effectiveAmbulanceLng) {
       const bounds = new mapboxgl.LngLatBounds();
-      bounds.extend([userLng, userLat]);
-      bounds.extend([ambulanceLng, ambulanceLat]);
+      bounds.extend([resolvedUserLng, resolvedUserLat]);
+      bounds.extend([effectiveAmbulanceLng, effectiveAmbulanceLat]);
       
       map.current.fitBounds(bounds, {
         padding: 80,
         duration: 1000
       });
     }
-  }, [ambulanceLat, ambulanceLng, status, etaMinutes, mapLoaded, userLat, userLng]);
+  }, [effectiveAmbulanceLat, effectiveAmbulanceLng, resolvedStatus, effectiveEtaMinutes, mapLoaded, resolvedUserLat, resolvedUserLng]);
 
   // Draw route line between user and ambulance
   useEffect(() => {
-    if (!map.current || !mapLoaded || !userLat || !userLng || !ambulanceLat || !ambulanceLng) return;
+    if (!map.current || !mapLoaded || !resolvedUserLat || !resolvedUserLng || !effectiveAmbulanceLat || !effectiveAmbulanceLng) return;
 
     const routeId = "ambulance-route";
     
@@ -180,8 +294,8 @@ export function AmbulanceMapView({
         geometry: {
           type: "LineString",
           coordinates: [
-            [userLng, userLat],
-            [ambulanceLng, ambulanceLat]
+            [resolvedUserLng, resolvedUserLat],
+            [effectiveAmbulanceLng, effectiveAmbulanceLat]
           ]
         }
       }
@@ -201,32 +315,67 @@ export function AmbulanceMapView({
         "line-dasharray": [2, 2]
       }
     });
-  }, [userLat, userLng, ambulanceLat, ambulanceLng, mapLoaded]);
+  }, [resolvedUserLat, resolvedUserLng, effectiveAmbulanceLat, effectiveAmbulanceLng, mapLoaded]);
 
-  const hasLocation = userLat && userLng;
-  const hasAmbulanceLocation = ambulanceLat && ambulanceLng;
+  const hasLocation = Number.isFinite(resolvedUserLat) && Number.isFinite(resolvedUserLng);
+  const hasAmbulanceLocation = Number.isFinite(effectiveAmbulanceLat) && Number.isFinite(effectiveAmbulanceLng);
+  const mapCenterLat = hasAmbulanceLocation ? (resolvedUserLat + effectiveAmbulanceLat) / 2 : resolvedUserLat;
+  const mapCenterLng = hasAmbulanceLocation ? (resolvedUserLng + effectiveAmbulanceLng) / 2 : resolvedUserLng;
+  const googleDirectionsUrl = hasAmbulanceLocation
+    ? `https://www.google.com/maps/dir/?api=1&origin=${effectiveAmbulanceLat},${effectiveAmbulanceLng}&destination=${resolvedUserLat},${resolvedUserLng}&travelmode=driving`
+    : `https://www.google.com/maps/search/?api=1&query=${resolvedUserLat},${resolvedUserLng}`;
+  const openStreetMapUrl = `https://www.openstreetmap.org/?mlat=${resolvedUserLat}&mlon=${resolvedUserLng}#map=15/${resolvedUserLat}/${resolvedUserLng}`;
+  const osmEmbedUrl = hasLocation
+    ? `https://www.openstreetmap.org/export/embed.html?bbox=${mapCenterLng - 0.02}%2C${mapCenterLat - 0.02}%2C${mapCenterLng + 0.02}%2C${mapCenterLat + 0.02}&layer=mapnik&marker=${resolvedUserLat}%2C${resolvedUserLng}`
+    : null;
 
   return (
     <div className="space-y-4">
       {/* Map Container */}
       <Card className="overflow-hidden">
-        <div
-          ref={mapContainer}
-          className="w-full h-[400px] bg-muted"
-        />
+        {mapboxgl.accessToken ? (
+          <div
+            ref={mapContainer}
+            className="w-full h-[320px] bg-muted"
+          />
+        ) : hasLocation ? (
+          <iframe
+            title="Ambulance OpenStreetMap View"
+            src={osmEmbedUrl}
+            className="w-full h-[320px] border-0"
+            loading="lazy"
+          />
+        ) : (
+          <div className="w-full h-[320px] bg-muted flex items-center justify-center" />
+        )}
         
         {!mapboxgl.accessToken && (
           <div className="absolute inset-0 flex items-center justify-center bg-background/80">
             <div className="text-center p-6">
               <MapPin className="h-12 w-12 text-muted-foreground mx-auto mb-3" />
-              <p className="text-sm font-medium">Map not configured</p>
+              <p className="text-sm font-medium">Map token not configured</p>
               <p className="text-xs text-muted-foreground mt-1">
-                Add VITE_MAPBOX_TOKEN to .env file
+                Showing OpenStreetMap fallback instead
               </p>
             </div>
           </div>
         )}
       </Card>
+
+      {hasLocation && (
+        <div className="flex flex-wrap gap-2">
+          <a href={googleDirectionsUrl} target="_blank" rel="noreferrer" className="inline-flex items-center gap-2 px-3 py-2 rounded-md border text-sm hover:bg-accent">
+            <Navigation className="h-4 w-4" />
+            Open Google Maps
+            <ExternalLink className="h-3 w-3" />
+          </a>
+          <a href={openStreetMapUrl} target="_blank" rel="noreferrer" className="inline-flex items-center gap-2 px-3 py-2 rounded-md border text-sm hover:bg-accent">
+            <MapPin className="h-4 w-4" />
+            Open OpenStreetMap
+            <ExternalLink className="h-3 w-3" />
+          </a>
+        </div>
+      )}
 
       {/* Status Cards */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
@@ -238,10 +387,10 @@ export function AmbulanceMapView({
             </div>
             <div className="flex-1 min-w-0">
               <p className="text-xs font-medium text-muted-foreground">Patient Location</p>
-              <p className="text-sm font-semibold truncate mt-1">{pickupLocation || "Not set"}</p>
+              <p className="text-sm font-semibold truncate mt-1">{resolvedPickupLocation || "Not set"}</p>
               {hasLocation && (
                 <p className="text-xs text-muted-foreground mt-1">
-                  {userLat.toFixed(4)}, {userLng.toFixed(4)}
+                  {resolvedUserLat.toFixed(4)}, {resolvedUserLng.toFixed(4)}
                 </p>
               )}
             </div>
@@ -249,7 +398,7 @@ export function AmbulanceMapView({
         </Card>
 
         {/* Distance */}
-        {distanceKm && (
+        {effectiveDistanceKm && (
           <Card className="p-4">
             <div className="flex items-start gap-3">
               <div className="p-2 rounded-lg bg-blue-100 dark:bg-blue-900/30">
@@ -257,14 +406,14 @@ export function AmbulanceMapView({
               </div>
               <div>
                 <p className="text-xs font-medium text-muted-foreground">Distance</p>
-                <p className="text-sm font-semibold mt-1">{distanceKm.toFixed(1)} km</p>
+                <p className="text-sm font-semibold mt-1">{effectiveDistanceKm.toFixed(1)} km</p>
               </div>
             </div>
           </Card>
         )}
 
         {/* ETA */}
-        {etaMinutes && (
+        {effectiveEtaMinutes && (
           <Card className="p-4">
             <div className="flex items-start gap-3">
               <div className="p-2 rounded-lg bg-green-100 dark:bg-green-900/30">
@@ -272,7 +421,7 @@ export function AmbulanceMapView({
               </div>
               <div>
                 <p className="text-xs font-medium text-muted-foreground">ETA</p>
-                <p className="text-sm font-semibold mt-1">{etaMinutes} minutes</p>
+                <p className="text-sm font-semibold mt-1">{effectiveEtaMinutes} minutes</p>
               </div>
             </div>
           </Card>
@@ -289,12 +438,12 @@ export function AmbulanceMapView({
                 <div>
                   <p className="text-xs font-medium text-muted-foreground">Ambulance Location</p>
                   <p className="text-sm font-semibold mt-1">
-                    {ambulanceLat.toFixed(4)}, {ambulanceLng.toFixed(4)}
+                    {effectiveAmbulanceLat.toFixed(4)}, {effectiveAmbulanceLng.toFixed(4)}
                   </p>
                 </div>
               </div>
-              <Badge variant={status === "arrived" ? "success" : "default"}>
-                {status}
+              <Badge variant={resolvedStatus === "arrived" ? "success" : "default"}>
+                {resolvedStatus}
               </Badge>
             </div>
           </Card>

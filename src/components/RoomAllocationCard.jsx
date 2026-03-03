@@ -2,20 +2,15 @@ import { useState, useEffect } from "react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Users, Home, Calendar, AlertCircle, Loader2 } from "lucide-react";
+import { Users, Home, Calendar, AlertCircle, Loader2, Stethoscope, MessageCircle } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
+import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 
-const WARD_TYPES = {
-  general: { label: "General", color: "bg-blue-500", icon: "🏥" },
-  icu: { label: "ICU", color: "bg-red-500", icon: "🚑" },
-  vip: { label: "VIP", color: "bg-purple-500", icon: "👑" },
-  emergency: { label: "Emergency", color: "bg-orange-500", icon: "🚨" }
-};
-
 export function RoomAllocationCard() {
   const { user } = useAuth();
+  const navigate = useNavigate();
   const [roomData, setRoomData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [doctorInfo, setDoctorInfo] = useState(null);
@@ -32,24 +27,35 @@ export function RoomAllocationCard() {
     try {
       const { data, error } = await supabase
         .from('room_allocations')
-        .select(`
-          *,
-          assigned_doctor:assigned_doctor_id(full_name, user_metadata -> 'specialization'),
-          assigned_nurse:assigned_nurse_id(full_name)
-        `)
+        .select('*')
         .eq('patient_id', user.id)
         .order('admission_date', { ascending: false })
         .limit(1)
         .maybeSingle();
 
+      if (error) throw error;
+
       if (data) {
         setRoomData(data);
-        // Extract doctor and nurse info
-        if (data.assigned_doctor) {
-          setDoctorInfo(data.assigned_doctor);
+        
+        // Load doctor info if assigned
+        if (data.assigned_doctor_id) {
+          const { data: doctor } = await supabase
+            .from('profiles')
+            .select('*')
+            .eq('id', data.assigned_doctor_id)
+            .single();
+          if (doctor) setDoctorInfo(doctor);
         }
-        if (data.assigned_nurse) {
-          setNurseInfo(data.assigned_nurse);
+        
+        // Load nurse info if assigned
+        if (data.assigned_nurse_id) {
+          const { data: nurse } = await supabase
+            .from('profiles')
+            .select('*')
+            .eq('id', data.assigned_nurse_id)
+            .single();
+          if (nurse) setNurseInfo(nurse);
         }
       }
     } catch (error) {
@@ -58,18 +64,6 @@ export function RoomAllocationCard() {
     } finally {
       setLoading(false);
     }
-  };
-
-  const getWardColor = (wardType) => {
-    return WARD_TYPES[wardType]?.color || 'bg-gray-500';
-  };
-
-  const getWardIcon = (wardType) => {
-    return WARD_TYPES[wardType]?.icon || '🏥';
-  };
-
-  const getWardLabel = (wardType) => {
-    return WARD_TYPES[wardType]?.label || wardType;
   };
 
   const formatDate = (dateString) => {
@@ -111,9 +105,9 @@ export function RoomAllocationCard() {
     <Card className="p-6 bg-gradient-to-br from-emerald-50 to-teal-50 dark:from-emerald-950/30 dark:to-teal-950/30 border-emerald-200 dark:border-emerald-800">
       <div className="mb-4">
         <div className="flex items-center justify-between mb-4">
-          <h3 className="text-lg font-semibold">Room Allocation</h3>
-          <Badge variant="default" className={`${getWardColor(roomData.ward_type)} text-white`}>
-            {getWardIcon(roomData.ward_type)} {getWardLabel(roomData.ward_type)}
+          <h3 className="text-lg font-semibold">🏥 Room Allocation</h3>
+          <Badge variant="default" className="bg-emerald-600 text-white">
+            Allocated
           </Badge>
         </div>
       </div>
@@ -134,16 +128,14 @@ export function RoomAllocationCard() {
         </div>
       </div>
 
-      {/* Status */}
+      {/* Admission Date */}
       <div className="mb-6 p-4 bg-white dark:bg-slate-950 rounded-lg border border-emerald-200 dark:border-emerald-800">
-        <div className="flex items-center justify-between mb-2">
-          <p className="text-xs text-muted-foreground uppercase tracking-wider">Status</p>
-          <Badge variant="outline" className="bg-emerald-50 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300 border-emerald-300 dark:border-emerald-700">
-            {roomData.status}
-          </Badge>
+        <div className="flex items-center gap-2 mb-2">
+          <Calendar className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
+          <p className="text-xs text-muted-foreground uppercase tracking-wider">Admission Date</p>
         </div>
-        <p className="text-sm text-muted-foreground">
-          Admitted on {formatDate(roomData.admission_date)}
+        <p className="text-sm font-medium">
+          {formatDate(roomData.admission_date)}
         </p>
       </div>
 
@@ -159,7 +151,7 @@ export function RoomAllocationCard() {
             <>
               <p className="font-semibold text-foreground">{doctorInfo.full_name}</p>
               <p className="text-xs text-muted-foreground">
-                {doctorInfo.user_metadata?.specialization || 'General'}
+                {doctorInfo.department || 'General Medicine'}
               </p>
             </>
           ) : (
@@ -186,11 +178,11 @@ export function RoomAllocationCard() {
 
       {/* Admission Info */}
       <div className="mt-6 p-4 bg-blue-50 dark:bg-blue-950/30 rounded-lg border border-blue-200 dark:border-blue-800 flex items-start gap-3">
-        <Calendar className="h-5 w-5 text-blue-600 dark:text-blue-400 flex-shrink-0 mt-0.5" />
+        <AlertCircle className="h-5 w-5 text-blue-600 dark:text-blue-400 flex-shrink-0 mt-0.5" />
         <div className="text-sm">
-          <p className="font-semibold text-foreground mb-1">Admission Details</p>
+          <p className="font-semibold text-foreground mb-1">Hospital Stay</p>
           <p className="text-muted-foreground">
-            You were admitted on <span className="font-medium">{formatDate(roomData.admission_date)}</span> to <span className="font-medium">{getWardLabel(roomData.ward_type)}</span>
+            Admitted on <span className="font-medium">{formatDate(roomData.admission_date)}</span> in Room {roomData.room_number}, Bed {roomData.bed_number}
           </p>
         </div>
       </div>
@@ -199,7 +191,40 @@ export function RoomAllocationCard() {
         <Button variant="outline" className="flex-1" onClick={loadRoomAllocation}>
           Refresh
         </Button>
-        <Button className="flex-1">Contact Doctor</Button>
+        <Button 
+          className="flex-1 gap-2"
+          onClick={() => {
+            if (doctorInfo) {
+              navigate('/create', {
+                state: {
+                  prefilledData: {
+                    title: `Contact Doctor - ${doctorInfo.full_name}`,
+                    description: `I would like to speak with Dr. ${doctorInfo.full_name} regarding my treatment in Room ${roomData.room_number}, Bed ${roomData.bed_number}.`,
+                    category: 'medical',
+                    department: doctorInfo.department || 'general',
+                    priority: 'high'
+                  }
+                }
+              });
+            } else {
+              navigate('/create', {
+                state: {
+                  prefilledData: {
+                    title: 'Contact Doctor - Medical Consultation',
+                    description: `I am in Room ${roomData.room_number}, Bed ${roomData.bed_number} and would like to speak with my assigned doctor.`,
+                    category: 'medical',
+                    department: 'general',
+                    priority: 'high'
+                  }
+                }
+              });
+            }
+            toast.success('Redirecting to create support ticket...');
+          }}
+        >
+          <MessageCircle className="h-4 w-4" />
+          Contact Doctor
+        </Button>
       </div>
     </Card>
   );

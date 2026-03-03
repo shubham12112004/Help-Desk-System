@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react";
-import { MessageCircle, X, Send, Loader2, Bot, User } from "lucide-react";
+import { MessageCircle, X, Send, Loader2, Bot, User, AlertCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
@@ -11,6 +11,7 @@ import {
   getChatMessages,
   sendMessage
 } from "@/services/hospital";
+import { getChatbotResponse } from "@/services/chatbot";
 import { toast } from "sonner";
 import { ScrollArea } from "@/components/ui/scroll-area";
 
@@ -109,85 +110,42 @@ export function HospitalAIChatbot() {
 
     setLoading(true);
     try {
-      // Send message to backend
-      const { data: savedMsg } = await sendMessage(currentChatId, "user", userMessage);
+      // Save user message to database
+      await sendMessage(currentChatId, "user", userMessage);
       
-      // Generate AI response (simplified - in production, you'd call OpenAI API)
-      const aiResponse = generateAIResponse(userMessage);
+      // Get AI response from API-based service
+      const response = await getChatbotResponse(userMessage, messages);
       
-      // Add AI message
-      const { data: aiMsg } = await sendMessage(currentChatId, "assistant", aiResponse);
+      // Save AI response to database
+      await sendMessage(currentChatId, "assistant", response.content);
       
-      if (aiMsg) {
-        setMessages(prev => [...prev, aiMsg]);
+      // Add AI message to UI
+      const aiMsg = {
+        role: "assistant",
+        content: response.content,
+        created_at: new Date().toISOString()
+      };
+      setMessages(prev => [...prev, aiMsg]);
+      
+      // Show notification for out-of-scope questions
+      if (response.type === 'out_of_scope') {
+        toast.info("I'm made for hospital assistance only", {
+          description: "Let me help with hospital-related queries instead!"
+        });
+      }
+      
+      if (!response.success) {
+        toast.error("Error processing response", {
+          description: response.error || "Please try again"
+        });
       }
     } catch (error) {
       console.error('Error sending message:', error);
-      toast.error('Failed to send message');
+      toast.error('Failed to send message', {
+        description: error.message || 'Please try again later'
+      });
     }
     setLoading(false);
-  };
-
-  const generateAIResponse = (userInput) => {
-    const input = userInput.toLowerCase();
-    
-    // Staff-specific responses
-    if (isStaff) {
-      if (input.includes('patient') || input.includes('view patient')) {
-        return "You can view all patient records from the Admin Dashboard. Use the patient management section to search by name, ID, or admission date. Would you like help with a specific patient?";
-      }
-      
-      if (input.includes('appointment') || input.includes('schedule') || input.includes('manage')) {
-        return "To manage appointments:\n• View today's appointments from the Admin Dashboard\n• Approve/reschedule patient requests\n• Check doctor availability\n• Update appointment status\n\nWhich action would you like to perform?";
-      }
-      
-      if (input.includes('inventory') || input.includes('stock') || input.includes('medicine')) {
-        return "Inventory management:\n• Check current medicine stock levels\n• View low-stock alerts\n• Update inventory records\n• Generate reorder reports\n\nNavigate to the Inventory section for detailed information.";
-      }
-      
-      if (input.includes('report') || input.includes('analytics') || input.includes('stats')) {
-        return "Available reports:\n• Patient admission statistics\n• Department-wise appointments\n• Billing and revenue reports\n• Bed occupancy rates\n• Medicine usage analytics\n\nWhich report would you like to generate?";
-      }
-      
-      if (input.includes('ticket') || input.includes('complaint')) {
-        return "You can manage all help desk tickets from the Tickets section. Filter by status, priority, or department to view and respond to patient queries.";
-      }
-      
-      // Default staff response
-      return "I can assist you with:\n• Patient management\n• Appointment scheduling\n• Inventory tracking\n• Reports and analytics\n• Ticket management\n\nWhat would you like help with?";
-    }
-    
-    // Patient-specific responses
-    if (input.includes('appointment') || input.includes('book')) {
-      return "I can help you book an appointment! Please visit the Appointments section from your dashboard or tell me which department you'd like to see (e.g., Cardiology, Neurology).";
-    }
-    
-    if (input.includes('token') || input.includes('opd') || input.includes('queue')) {
-      return "You can check your OPD token status in the Token Queue section on your dashboard. Would you like me to create a new token for you? If yes, please specify the department.";
-    }
-    
-    if (input.includes('medicine') || input.includes('pharmacy') || input.includes('prescription')) {
-      return "For medicine requests, please check the Medicine & Pharmacy section on your dashboard. You can request medicine delivery or pickup based on your active prescriptions.";
-    }
-    
-    if (input.includes('emergency') || input.includes('urgent') || input.includes('ambulance')) {
-      return "🚨 For emergencies, please:\n1. Call 108 immediately\n2. Or use the Ambulance Request feature on your dashboard\n3. Visit the Emergency department directly\n\nIs this a medical emergency?";
-    }
-    
-    if (input.includes('billing') || input.includes('payment') || input.includes('invoice')) {
-      return "You can view your billing details and make payments from the Billing section on your dashboard. All invoices are available for download.";
-    }
-    
-    if (input.includes('lab') || input.includes('report') || input.includes('test')) {
-      return "Lab reports can be accessed from the Lab Reports section. Once your test results are ready, you'll receive a notification and can download the report.";
-    }
-    
-    if (input.includes('room') || input.includes('bed') || input.includes('admission')) {
-      return "For room and bed allocation information, please check the Room Allocation section. You can see your current room details, assigned doctor, and nurse information there.";
-    }
-    
-    // Default patient response
-    return "I'm here to help you with:\n• Booking appointments\n• OPD token queue\n• Medicine requests\n• Lab reports\n• Room allocation\n• Billing\n• Emergency assistance\n\nWhat would you like assistance with?";
   };
 
   const handleQuickAction = (action) => {

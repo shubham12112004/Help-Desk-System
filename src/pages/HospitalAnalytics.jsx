@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/useAuth";
 import { useNavigate } from "react-router-dom";
 import { useState, useEffect } from "react";
-import { supabase } from "@/integrations/supabase/client";
+import * as ticketsService from "@/services/tickets";
 import {
   ArrowLeft,
   TrendingUp,
@@ -39,12 +39,8 @@ const HospitalAnalytics = () => {
 
   const fetchAnalytics = async () => {
     try {
-      // Fetch ticket statistics
-      const { data: tickets, error: ticketsError } = await supabase
-        .from("tickets")
-        .select("id, status, priority, created_at, updated_at, department");
-
-      if (ticketsError) throw ticketsError;
+      // Fetch ticket data from backend API
+      const tickets = await ticketsService.getTickets({ status: 'all' });
 
       // Calculate analytics
       const stats = {

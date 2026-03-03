@@ -1,34 +1,55 @@
 import { AppLayout } from "@/components/AppLayout";
 import { useAuth } from "@/hooks/useAuth";
-import { useState, useEffect } from "react";
-import { supabase } from "@/integrations/supabase/client";
+import { useState, useEffect, useMemo } from "react";
+import * as profilesService from "@/services/profiles";
 import { PatientProfileCard } from "@/components/PatientProfileCard";
 import { ArrowLeft, Edit2, Save, X } from "lucide-react";
 import { Link } from "react-router-dom";
 
 const PatientProfile = () => {
   const { user } = useAuth();
+  const [currentProfile, setCurrentProfile] = useState(null);
   const [profile, setProfile] = useState(null);
+  const [patients, setPatients] = useState([]);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [selectedPatientId, setSelectedPatientId] = useState(null);
   const [isEditing, setIsEditing] = useState(false);
   const [editData, setEditData] = useState({});
   const [isLoading, setIsLoading] = useState(true);
+  const [isPatientsLoading, setIsPatientsLoading] = useState(false);
 
   useEffect(() => {
-    loadProfile();
+    loadCurrentProfile();
   }, [user]);
 
-  const loadProfile = async () => {
+  useEffect(() => {
+    if (currentProfile?.role === "admin") {
+      loadPatients();
+    }
+  }, [currentProfile]);
+
+  // Compute filtered patients - moved before early return to follow Rules of Hooks
+  const filteredPatients = useMemo(() => {
+    if (!searchQuery.trim()) return patients;
+    const query = searchQuery.toLowerCase();
+    return patients.filter((p) =>
+      [p.full_name, p.email, p.role].some((value) =>
+        value?.toLowerCase().includes(query)
+      )
+    );
+  }, [patients, searchQuery]);
+
+  const loadCurrentProfile = async () => {
     setIsLoading(true);
     try {
-      const { data } = await supabase
-        .from("profiles")
-        .select("*")
-        .eq("id", user.id)
-        .single();
-
-      if (data) {
-        setProfile(data);
-        setEditData(data);
+      const profile = await profilesService.getMyProfile();
+      setCurrentProfile(profile);
+      if (profile?.role === "admin") {
+        setProfile(null);
+        setEditData({});
+      } else {
+        setProfile(profile);
+        setEditData(profile);
       }
     } catch (error) {
       console.error("Error loading profile:", error);
@@ -37,16 +58,46 @@ const PatientProfile = () => {
     }
   };
 
+  const loadPatients = async () => {
+    setIsPatientsLoading(true);
+    try {
+      const patientsData = await profilesService.getPatients();
+      setPatients(patientsData || []);
+      if (!selectedPatientId && patientsData?.length) {
+        setSelectedPatientId(patientsData[0].id);
+        await loadPatientProfile(patientsData[0].id);
+      }
+    } catch (error) {
+      console.error("Error loading patients:", error);
+    } finally {
+      setIsPatientsLoading(false);
+    }
+  };
+
+  const loadPatientProfile = async (patientId) => {
+    try {
+      const profile = await profilesService.getProfileById(patientId);
+      setProfile(profile);
+      setEditData(profile);
+    } catch (error) {
+      console.error("Error loading selected patient:", error);
+    }
+  };
+
   const handleSaveProfile = async () => {
     try {
-      const { error } = await supabase
-        .from("profiles")
-        .update(editData)
-        .eq("id", user.id);
+      const targetId = currentProfile?.role === "admin" ? selectedPatientId : user.id;
+      let updatedProfile;
+      
+      if (currentProfile?.role === "admin" && selectedPatientId) {
+        // Admin updating a patient
+        updatedProfile = await profilesService.updateProfile(selectedPatientId, editData);
+      } else {
+        // User updating their own profile
+        updatedProfile = await profilesService.updateMyProfile(editData);
+      }
 
-      if (error) throw error;
-
-      setProfile(editData);
+      setProfile(updatedProfile);
       setIsEditing(false);
       alert("Profile updated successfully!");
     } catch (error) {
@@ -65,6 +116,9 @@ const PatientProfile = () => {
     );
   }
 
+  const isAdmin = currentProfile?.role === "admin";
+  const displayProfile = profile;
+
   return (
     <AppLayout>
       <div className="max-w-4xl mx-auto">
@@ -81,32 +135,87 @@ const PatientProfile = () => {
             <div>
               <h1 className="text-3xl font-bold">Patient Profile</h1>
               <p className="text-muted-foreground mt-1">
-                Manage your personal and health information
+                {isAdmin
+                  ? "Manage patient records and medical details"
+                  : "Manage your personal and health information"}
               </p>
             </div>
-            <button
-              onClick={() => setIsEditing(!isEditing)}
-              className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 transition-colors"
-            >
-              {isEditing ? (
-                <>
-                  <X className="h-4 w-4" />
-                  Cancel
-                </>
-              ) : (
-                <>
-                  <Edit2 className="h-4 w-4" />
-                  Edit Profile
-                </>
-              )}
-            </button>
+            {displayProfile && (
+              <button
+                onClick={() => setIsEditing(!isEditing)}
+                className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 transition-colors"
+              >
+                {isEditing ? (
+                  <>
+                    <X className="h-4 w-4" />
+                    Cancel
+                  </>
+                ) : (
+                  <>
+                    <Edit2 className="h-4 w-4" />
+                    Edit Profile
+                  </>
+                )}
+              </button>
+            )}
           </div>
         </div>
 
+        {/* Admin: Patient Records List */}
+        {isAdmin && (
+          <div className="rounded-lg border border-border bg-card p-6 mb-8">
+            <div className="flex items-center justify-between gap-4 mb-4">
+              <h2 className="text-lg font-semibold">Patient Records</h2>
+              <input
+                type="text"
+                placeholder="Search patients by name or email..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="w-full max-w-sm px-3 py-2 rounded-lg border border-border bg-background"
+              />
+            </div>
+            {isPatientsLoading ? (
+              <div className="flex items-center justify-center py-8">
+                <div className="h-6 w-6 animate-spin rounded-full border-4 border-primary border-t-transparent" />
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                {filteredPatients.map((patient) => (
+                  <button
+                    key={patient.id}
+                    onClick={async () => {
+                      setSelectedPatientId(patient.id);
+                      await loadPatientProfile(patient.id);
+                      setIsEditing(false);
+                    }}
+                    className={`rounded-lg border px-4 py-3 text-left transition-all ${
+                      selectedPatientId === patient.id
+                        ? "border-primary bg-primary/5"
+                        : "border-border hover:bg-muted"
+                    }`}
+                  >
+                    <p className="text-sm font-semibold text-foreground">
+                      {patient.full_name || patient.email}
+                    </p>
+                    <p className="text-xs text-muted-foreground truncate">
+                      {patient.email || "No email"}
+                    </p>
+                    <p className="text-xs text-muted-foreground capitalize">
+                      {patient.role}
+                    </p>
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
         {/* Profile Card */}
-        <div className="mb-8">
-          <PatientProfileCard user={user} profile={profile} />
-        </div>
+        {displayProfile && (
+          <div className="mb-8">
+            <PatientProfileCard user={user} profile={displayProfile} />
+          </div>
+        )}
 
         {/* Detailed Information */}
         {!isEditing ? (
@@ -117,18 +226,22 @@ const PatientProfile = () => {
               <div className="space-y-4">
                 <div>
                   <label className="text-sm text-muted-foreground">Email</label>
-                  <p className="font-medium">{user?.email}</p>
+                  <p className="font-medium">
+                    {displayProfile?.email || user?.email || "Not provided"}
+                  </p>
                 </div>
                 <div>
                   <label className="text-sm text-muted-foreground">Phone</label>
-                  <p className="font-medium">{profile?.phone || "Not provided"}</p>
+                  <p className="font-medium">
+                    {displayProfile?.phone || "Not provided"}
+                  </p>
                 </div>
                 <div>
                   <label className="text-sm text-muted-foreground">
                     Address
                   </label>
                   <p className="font-medium">
-                    {profile?.address || "Not provided"}
+                    {displayProfile?.address || "Not provided"}
                   </p>
                 </div>
               </div>
@@ -143,16 +256,20 @@ const PatientProfile = () => {
                     Blood Group
                   </label>
                   <p className="font-medium text-lg">
-                    {profile?.blood_group || "Not provided"}
+                    {displayProfile?.blood_group || "Not provided"}
                   </p>
                 </div>
                 <div>
                   <label className="text-sm text-muted-foreground">Age</label>
-                  <p className="font-medium">{profile?.age || "Not provided"}</p>
+                  <p className="font-medium">
+                    {displayProfile?.age || "Not provided"}
+                  </p>
                 </div>
                 <div>
                   <label className="text-sm text-muted-foreground">Gender</label>
-                  <p className="font-medium">{profile?.gender || "Not provided"}</p>
+                  <p className="font-medium">
+                    {displayProfile?.gender || "Not provided"}
+                  </p>
                 </div>
               </div>
             </div>
@@ -164,13 +281,13 @@ const PatientProfile = () => {
                 <div>
                   <label className="text-sm text-muted-foreground">Name</label>
                   <p className="font-medium">
-                    {profile?.emergency_contact_name || "Not provided"}
+                    {displayProfile?.emergency_contact_name || "Not provided"}
                   </p>
                 </div>
                 <div>
                   <label className="text-sm text-muted-foreground">Phone</label>
                   <p className="font-medium">
-                    {profile?.emergency_contact_phone || "Not provided"}
+                    {displayProfile?.emergency_contact_phone || "Not provided"}
                   </p>
                 </div>
               </div>
