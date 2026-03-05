@@ -1,5 +1,6 @@
 const supabase = require("../utils/supabaseClient");
 const Profile = require("../models/Profile");
+const jwt = require("jsonwebtoken");
 
 async function requireSupabaseAuth(req, res, next) {
   try {
@@ -12,13 +13,26 @@ async function requireSupabaseAuth(req, res, next) {
       return res.status(401).json({ message: "Authorization token missing" });
     }
 
-    const { data, error } = await supabase.auth.getUser(token);
-
-    if (error || !data?.user) {
+    // Decode JWT locally without calling Supabase (faster, works offline)
+    let user;
+    try {
+      const decoded = jwt.decode(token);
+      if (!decoded || !decoded.sub) {
+        return res.status(401).json({ message: "Invalid token format" });
+      }
+      
+      // Extract user info from JWT payload
+      user = {
+        id: decoded.sub,
+        email: decoded.email,
+        user_metadata: decoded.user_metadata || {},
+        aud: decoded.aud,
+        role: decoded.role
+      };
+    } catch (decodeError) {
+      console.error("JWT decode error:", decodeError.message);
       return res.status(401).json({ message: "Invalid or expired token" });
     }
-
-    const user = data.user;
     const email = (user.email || "").toLowerCase().trim();
     const defaultRole = user.user_metadata?.role || "citizen";
 

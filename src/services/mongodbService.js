@@ -4,8 +4,7 @@
  */
 
 import { supabase } from '@/integrations/supabase/client';
-
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5001/api';
+import { API_BASE_URL } from './apiBaseUrl';
 
 // API client with authentication
 class MongoDBAPI {

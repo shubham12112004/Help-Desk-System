@@ -1,7 +1,5 @@
 import { supabase } from '@/integrations/supabase/client';
-
-// API base URL
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5001/api';
+import { API_BASE_URL } from './apiBaseUrl';
 
 export class APIClient {
   static async request(endpoint, options = {}) {

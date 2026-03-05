@@ -340,9 +340,13 @@ const loginUser = async (req, res) => {
     if (!isPasswordValid)
       return res.status(400).json({ message: "Invalid credentials" });
 
+    if (!process.env.JWT_SECRET) {
+      return res.status(500).json({ message: "JWT_SECRET is not configured" });
+    }
+
     const token = jwt.sign(
       { id: user._id, email: user.email, role: user.role },
-      process.env.JWT_SECRET || "defaultsecret",
+      process.env.JWT_SECRET,
       { expiresIn: "7d" }
     );
 

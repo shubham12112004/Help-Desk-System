@@ -30,6 +30,7 @@ export {
 
 // Keep Supabase for storage and realtime features
 import { supabase } from '@/integrations/supabase/client';
+import { API_BASE_URL } from './apiBaseUrl';
 
 // =====================================================
 // ADDITIONAL HELPER FUNCTIONS (Supabase-based)
@@ -37,7 +38,7 @@ import { supabase } from '@/integrations/supabase/client';
 
 export async function getCurrentToken(department) {
   try {
-    const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:5001/api'}/hospital/tokens/current?department=${department}`, {
+    const response = await fetch(`${API_BASE_URL}/hospital/tokens/current?department=${department}`, {
       headers: {
         'Authorization': `Bearer ${(await supabase.auth.getSession()).data.session?.access_token}`,
       },
@@ -55,7 +56,7 @@ export async function getCurrentToken(department) {
 
 export async function getActivePrescriptions(patientId) {
   try {
-    const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:5001/api'}/hospital/prescriptions?patient_id=${patientId}&status=active`, {
+    const response = await fetch(`${API_BASE_URL}/hospital/prescriptions?patient_id=${patientId}&status=active`, {
       headers: {
         'Authorization': `Bearer ${(await supabase.auth.getSession()).data.session?.access_token}`,
       },
@@ -70,7 +71,7 @@ export async function getActivePrescriptions(patientId) {
 
 export async function updateMedicineRequestStatus(requestId, status) {
   try {
-    const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:5001/api'}/medicine/${requestId}`, {
+    const response = await fetch(`${API_BASE_URL}/medicine/${requestId}`, {
       method: 'PUT',
       headers: {
         'Content-Type': 'application/json',
@@ -146,7 +147,7 @@ export async function uploadLabReport(reportId, file) {
 
 export async function makePayment(billId, amount, paymentMethod) {
   try {
-    const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:5001/api'}/hospital/bills/${billId}/payment`, {
+    const response = await fetch(`${API_BASE_URL}/hospital/bills/${billId}/payment`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -168,7 +169,7 @@ export async function makePayment(billId, amount, paymentMethod) {
 
 export async function getNotifications(userId) {
   try {
-    const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:5001/api'}/notifications`, {
+    const response = await fetch(`${API_BASE_URL}/notifications`, {
       headers: {
         'Authorization': `Bearer ${(await supabase.auth.getSession()).data.session?.access_token}`,
       },
@@ -183,7 +184,7 @@ export async function getNotifications(userId) {
 
 export async function markNotificationRead(notificationId) {
   try {
-    const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:5001/api'}/notifications/${notificationId}/read`, {
+    const response = await fetch(`${API_BASE_URL}/notifications/${notificationId}/read`, {
       method: 'PUT',
       headers: {
         'Authorization': `Bearer ${(await supabase.auth.getSession()).data.session?.access_token}`,
@@ -199,7 +200,7 @@ export async function markNotificationRead(notificationId) {
 
 export async function markAllNotificationsRead(userId) {
   try {
-    const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:5001/api'}/notifications/mark-all-read`, {
+    const response = await fetch(`${API_BASE_URL}/notifications/mark-all-read`, {
       method: 'PUT',
       headers: {
         'Authorization': `Bearer ${(await supabase.auth.getSession()).data.session?.access_token}`,
